@@ -14,8 +14,8 @@ from app.schemas import AuthResponse, LoginRequest, RegisterRequest, UserPublic,
 from app.security import (
     hash_password,
     hash_session_token,
-    issue_session,
     is_expired,
+    issue_session,
     verify_password,
 )
 
