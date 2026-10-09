@@ -4,7 +4,7 @@
 
 NEXORION is a proposed persistent digital environment in which a researcher can explore a modeled world, investigate security evidence, develop hypotheses, run reproducible simulations, and independently verify findings. The concept combines a stateful world model, coordinated specialist roles, explicit governance, and a future isolated lab for separately authorized experiments.
 
-> **Project status:** Research and architecture specification. The repository currently contains concept and planning documents; executable application source, runtime behavior, and security controls are not verified as implemented. Future capabilities described here are proposals, not existing features.
+> **Project status:** Stage 2 adds an executable backend foundation on the `stage2` branch: local account sessions, workspace-scoped mission drafts, relational models and migrations, and automated API tests. This is not production-ready. The digital-world graph, scenario runner, independent verification, agent orchestration, frontend, and isolated lab remain future work.
 
 ## The three identities
 
@@ -74,6 +74,17 @@ Stage 1 is documentation-only: it defines requirements, contracts, lifecycle rul
 
 Stage 1 is **proposed for owner review** until the requirements and acceptance checklist are explicitly accepted. These documents specify expected future behavior; they do not prove runtime, API, simulation, or security tests have passed.
 
+## Stage 2 application foundation
+
+Stage 2 implements the first executable backend slice on the stage2 branch for review. It includes a FastAPI API, Argon2 password hashing, server-side revocable sessions, CSRF checks for state-changing cookie-authenticated requests, server-side workspace authorization, synthetic-only mission drafts, structured errors, audit events, SQLAlchemy models, an Alembic migration, and automated API tests.
+
+- [Stage 2 index](docs/stage2/00_STAGE2_INDEX.md)
+- [Application foundation notes](docs/stage2/01_APPLICATION_FOUNDATION.md)
+- [Security and test matrix](docs/stage2/02_SECURITY_AND_TESTS.md)
+- [Backend local setup and API walkthrough](backend/README.md)
+
+Local evidence for the Stage 2 working tree: 13 API tests pass; Python compilation passes; and the initial Alembic migration applies to a local SQLite test database. The pull-request CI result and PostgreSQL integration remain to be verified. The local-account adapter does not settle production SSO/MFA, account provisioning, deployment, data-retention, or other open owner decisions.
+
 ## Core documentation
 
 - [Concept and scope](docs/CONCEPT.md)
@@ -117,7 +128,7 @@ See [technology decision records](docs/stage1/05_TECHNOLOGY_DECISION_RECORDS.md)
 
 ## Development status and setup
 
-The reviewed project materials are Markdown planning documents. Application source code, dependency manifests, verified test scripts, deployment configuration, and runtime behavior are not established by this blueprint. Therefore, no install, run, or test command is presented as verified. Those instructions should be added when implementation artifacts exist and the corresponding commands have been exercised.
+Executable backend source, a Python dependency manifest, an initial Alembic schema migration, API tests, and backend CI configuration now exist on the stage2 branch. Local setup and test instructions are documented in [backend/README.md](backend/README.md). This first foundation is not production-ready; CI, PostgreSQL integration, production identity/onboarding, and operational release gates must be verified before deployment.
 
 ## Roadmap
 
