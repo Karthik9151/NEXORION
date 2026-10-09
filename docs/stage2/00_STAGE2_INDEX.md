@@ -35,3 +35,5 @@ The metadata database direction is PostgreSQL-compatible. SQLite appears only fo
 ## Acceptance evidence
 
 The executable tests cover registration/session setup, draft mission create/list/read, cross-workspace denial, CSRF enforcement, rejection of non-synthetic scope, rejection of client-supplied state, logout revocation, request IDs, and health/readiness. CI results must be checked on the pull request before this stage is treated as verified.
+
+The current automated suite contains 13 tests. Pull-request CI runs the suite and Ruff static checks under Python 3.11 and 3.12.
