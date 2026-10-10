@@ -37,3 +37,8 @@ From the frontend directory, install dependencies and run the production build:
     npm run build
 
 Backend behavior was left unchanged by this UI-only implementation. Cross-origin deployment still requires a backend CORS policy that allows the frontend origin with credentialed requests.
+
+
+## Implementation handoff note
+
+This document records the UI/UX-only source branch, \`stage4-ui-and-ux\`. The implementation branch \`stage4-implementation\` retains this interface and adds the server-side API contracts, persisted Origo verification and reports described in \`01_API_AND_ORIGO_CONTRACTS.md\`. For current backend behavior and verification status, use the implementation status document and backend README rather than treating this source-branch handoff as a description of final runtime behavior.
