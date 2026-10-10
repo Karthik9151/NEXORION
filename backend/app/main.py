@@ -19,7 +19,7 @@ from app.config import Settings, get_settings
 from app.db import build_engine, build_session_factory
 from app.dependencies import get_db
 from app.errors import ApiError
-from app.routes import auth, lifecycle, missions, research, simulation, system, world
+from app.routes import approvals, auth, lifecycle, missions, research, simulation, system, world
 
 logger = logging.getLogger("nexorion.api")
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -193,6 +193,7 @@ def create_app(
     app.include_router(auth.router, prefix="/v1")
     app.include_router(missions.router, prefix="/v1")
     app.include_router(lifecycle.router, prefix="/v1")
+    app.include_router(approvals.router, prefix="/v1")
     app.include_router(system.router, prefix="/v1")
     app.include_router(world.router, prefix="/v1")
     app.include_router(simulation.router, prefix="/v1")
