@@ -58,4 +58,4 @@ The current fixture checker reports whether deterministic assertions agree with 
 
 ## Acceptance gate
 
-Mark Stage 3 **verified** only after GitHub Actions passes on the branch, the migration upgrades and downgrades cleanly on a fresh database, PostgreSQL integration is exercised, and the reviewer confirms the scope and access-control tests. Code committed to a branch is not, by itself, evidence that every runtime path has passed.
+**Acceptance evidence completed for this stage's defined scope:** GitHub Actions passed on the branch; fresh SQLite and PostgreSQL 16 migrations upgraded, downgraded to `0001_initial`, and re-upgraded to head; the PostgreSQL API smoke test exercised registration, mission creation, baseline capture, and a synthetic simulation; the API regression suite and Ruff passed on Python 3.11 and 3.12. The reviewed tests cover cross-workspace graph boundaries, CSRF, scope/tier restrictions, baseline prerequisites, secret-like attribute rejection, idempotency, and the benign-control fixture. This is not a full penetration test, concurrency test, backup/restore test, or production certification.
