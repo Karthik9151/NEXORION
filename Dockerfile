@@ -12,12 +12,20 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PORT=10000
+    PORT=10000 \
+    HOME=/home/nexorion
 WORKDIR /app
 COPY requirements.txt ./requirements.txt
 COPY backend/ ./backend/
 RUN python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 COPY --from=frontend-build /build/frontend/dist ./frontend/dist
+
+# The runtime app needs read access to code/assets only. Running as a fixed
+# non-root UID reduces the impact of an application-level compromise.
+RUN useradd --system --uid 10001 --create-home --home-dir /home/nexorion --shell /usr/sbin/nologin nexorion \
+    && chown -R nexorion:nexorion /app /home/nexorion
+USER nexorion
+
 WORKDIR /app/backend
 EXPOSE 10000
 CMD ["sh", "-c", "alembic upgrade head && python -m app.bootstrap_owner && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]

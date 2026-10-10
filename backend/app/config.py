@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     session_cookie_name: str = "nexorion_session"
     csrf_cookie_name: str = "nexorion_csrf"
     allow_self_registration: bool = True
+    # Optional database-backed worker; disabled in local tests unless explicitly enabled.
+    nexorion_worker_enabled: bool = False
     # Comma-separated exact frontend origins; never use "*" with credentialed cookies.
     cors_allowed_origins: str = ""
 

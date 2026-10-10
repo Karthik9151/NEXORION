@@ -40,6 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ENV: test
+      NEXORION_WORKER_ENABLED: "true"
       DATABASE_URL: sqlite:////tmp/nexorion-stage4-e2e.db
       NEXORION_API_ORIGIN: http://127.0.0.1:8000
     defaults:
@@ -70,3 +71,16 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run authenticated end-to-end browser tests
         run: npm run test:e2e
+
+  container-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Build production container
+        run: docker build --tag nexorion:ci .
+      - name: Assert container runtime is non-root
+        run: |
+          configured_user="$(docker image inspect --format='{{.Config.User}}' nexorion:ci)"
+          test "$configured_user" = "nexorion"
+          echo "Container runtime user is: $configured_user"

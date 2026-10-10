@@ -1,8 +1,10 @@
 """FastAPI application factory and safe error/request metadata handling."""
 
+import asyncio
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
@@ -31,6 +33,7 @@ from app.routes import (
     system,
     world,
 )
+from app.services.synthetic_worker import worker_loop
 
 logger = logging.getLogger("nexorion.api")
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -78,6 +81,30 @@ def create_app(
         engine = build_engine(app_settings.database_url)
         session_factory = build_session_factory(engine)
 
+    @asynccontextmanager
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        stop_event = asyncio.Event()
+        worker_task: asyncio.Task[None] | None = None
+        if app_settings.nexorion_worker_enabled:
+            worker_id = f"nexorion-worker-{uuid4().hex[:16]}"
+            worker_task = asyncio.create_task(
+                worker_loop(session_factory, stop_event, worker_id=worker_id),
+                name="nexorion-synthetic-worker",
+            )
+        try:
+            yield
+        finally:
+            stop_event.set()
+            if worker_task is not None:
+                try:
+                    await asyncio.wait_for(worker_task, timeout=5.0)
+                except TimeoutError:
+                    worker_task.cancel()
+                    try:
+                        await worker_task
+                    except asyncio.CancelledError:
+                        pass
+
     app = FastAPI(
         title="NEXORION API",
         version="0.2.0",
@@ -89,10 +116,12 @@ def create_app(
         docs_url=None if app_settings.app_env == "production" else "/docs",
         redoc_url=None if app_settings.app_env == "production" else "/redoc",
         openapi_url=None if app_settings.app_env == "production" else "/openapi.json",
+        lifespan=lifespan,
     )
     app.state.settings = app_settings
     app.state.session_factory = session_factory
     app.state.engine = engine
+    app.state.worker_enabled = app_settings.nexorion_worker_enabled
 
     cors_origins = [origin.strip() for origin in app_settings.cors_allowed_origins.split(",")
                     if origin.strip()]

@@ -13,6 +13,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: NEXORION_WORKER_ENABLED
+        value: "true"
       - key: DATABASE_URL
         sync: false
       - key: NEXORION_BOOTSTRAP_OWNER_EMAIL
