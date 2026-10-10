@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 
 from app.errors import ApiError
 from app.models import AuditEvent, Mission
-from app.services.lifecycle import (\n    canonical_mission_digest,\n    canonical_plan_document,\n    transition_mission,\n)
+from app.services.lifecycle import (
+    canonical_mission_digest,
+    canonical_plan_document,
+    transition_mission,
+)
 from app.simulation import SCENARIO_REGISTRY
 from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt, MissionPlan
 
