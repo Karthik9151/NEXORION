@@ -13,14 +13,16 @@ from app.models import Mission, User, Workspace, WorkspaceMembership
 from app.services.lifecycle import transition_mission
 
 DATABASE_URL = os.environ.get("NEXORION_TEST_DATABASE_URL", "")
-pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="PostgreSQL 16 integration URL not configured")
+pytestmark = pytest.mark.skipif(not DATABASE_URL,
+    reason="PostgreSQL 16 integration URL not configured")
 
 
 def test_concurrent_lifecycle_commands_have_one_winner() -> None:
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
     suffix = uuid4().hex
     with Session(engine) as db:
-        user = User(email=f"stage5-{suffix}@example.test", password_hash="test-only-not-a-credential")
+        user = User(email=f"stage5-{suffix}@example.test",
+            password_hash="test-only-not-a-credential")
         workspace = Workspace(name=f"stage5-{suffix}")
         db.add_all([user, workspace])
         db.flush()

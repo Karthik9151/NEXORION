@@ -75,7 +75,8 @@ def test_every_documented_transition_is_enforced(source: str, target: str) -> No
     try:
         with Session(engine, expire_on_commit=False) as db:
             mission = _mission(db, source)
-            verifier = target in {"succeeded", "completed_with_warnings", "disputed", "inconclusive"}
+            verifier = target in {"succeeded", "completed_with_warnings", "disputed",
+                "inconclusive"}
             if source == "verifying" and target == "failed":
                 command, verifier = "verification_failed", True
             elif target == "failed" and source == "planning":

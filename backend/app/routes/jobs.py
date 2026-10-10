@@ -79,25 +79,35 @@ def enqueue_job(
     ))
     if existing is not None:
         if existing.scenario_id != payload.scenario_id:
-            raise ApiError(409, "IDEMPOTENCY_KEY_REUSED", "This idempotency key belongs to a different scenario.")
+            raise ApiError(409, "IDEMPOTENCY_KEY_REUSED",
+                "This idempotency key belongs to a different scenario.")
         return _public(existing)
     if mission.state != "planned":
         raise ApiError(409, "MISSION_NOT_PLANNED", "Only a planned mission can be queued.")
     active_job = db.scalar(select(MissionJob.id).where(
         MissionJob.workspace_id == workspace_id, MissionJob.mission_id == mission.id,
-        MissionJob.status.in_(["queued", "claimed", "running", "cancelling", "uncertain", "review_required"]),
+        MissionJob.status.in_(["queued", "claimed", "running", "cancelling", "uncertain",
+            "review_required"]),
     ))
     if active_job is not None:
-        raise ApiError(409, "MISSION_JOB_ALREADY_ACTIVE", "A mission may have only one active or uncertain job.")
-    if mission.autonomy_tier != "simulate_synthetic" or mission.scope.get("mode") != "synthetic_only":
-        raise ApiError(403, "SYNTHETIC_SCOPE_REQUIRED", "Only explicitly synthetic missions may be queued.")
-    if payload.scenario_id not in mission.scope.get("scenario_ids", []) or payload.scenario_id not in SCENARIO_REGISTRY:
-        raise ApiError(403, "SCENARIO_OUT_OF_SCOPE", "The scenario must be registered and included in mission scope.")
+        raise ApiError(409, "MISSION_JOB_ALREADY_ACTIVE",
+            "A mission may have only one active or uncertain job.")
+    if (
+        mission.autonomy_tier != "simulate_synthetic"
+        or mission.scope.get("mode") != "synthetic_only"
+    ):
+        raise ApiError(403, "SYNTHETIC_SCOPE_REQUIRED",
+            "Only explicitly synthetic missions may be queued.")
+    if payload.scenario_id not in mission.scope.get("scenario_ids",
+        []) or payload.scenario_id not in SCENARIO_REGISTRY:
+        raise ApiError(403, "SCENARIO_OUT_OF_SCOPE",
+            "The scenario must be registered and included in mission scope.")
     baseline = db.scalar(select(WorldSnapshot).where(
         WorldSnapshot.workspace_id == workspace_id, WorldSnapshot.mission_id == mission.id,
     ).order_by(WorldSnapshot.sequence.desc()).limit(1))
     if baseline is None:
-        raise ApiError(409, "BASELINE_REQUIRED", "Capture a baseline before queueing synthetic work.")
+        raise ApiError(409, "BASELINE_REQUIRED",
+            "Capture a baseline before queueing synthetic work.")
     now = datetime.now(timezone.utc)
     digest = canonical_mission_digest(mission)
     approvals = db.scalars(select(MissionApproval).where(
@@ -130,7 +140,8 @@ def enqueue_job(
         and item.approver_id != mission.requester_id
     ]
     if len(approvals) != 1:
-        raise ApiError(409, "APPROVAL_REQUIRED", "Exactly one current, unconsumed approval must match the mission contract.")
+        raise ApiError(409, "APPROVAL_REQUIRED",
+            "Exactly one current, unconsumed approval must match the mission contract.")
     approval = approvals[0]
     try:
         transition_mission(
@@ -173,7 +184,8 @@ def enqueue_job(
         ))
         if existing is not None and existing.scenario_id == payload.scenario_id:
             return _public(existing)
-        raise ApiError(409, "JOB_CONFLICT", "A concurrent queue operation conflicted; reload the mission.") from exc
+        raise ApiError(409, "JOB_CONFLICT",
+            "A concurrent queue operation conflicted; reload the mission.") from exc
     except Exception:
         db.rollback()
         raise

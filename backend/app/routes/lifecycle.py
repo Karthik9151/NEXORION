@@ -38,7 +38,8 @@ def mission_command(
 ) -> MissionPublic:
     require_workspace_membership(db, user_id=user.id, workspace_id=workspace_id)
     if payload.command == "queue":
-        raise ApiError(400, "USE_DURABLE_JOB_QUEUE", "Queueing must use the durable job endpoint so idempotency and approval are enforced.")
+        raise ApiError(400, "USE_DURABLE_JOB_QUEUE",
+            "Queueing must use the durable job endpoint so idempotency and approval are enforced.")
     mission = db.scalar(select(Mission).where(
         Mission.id == mission_id, Mission.workspace_id == workspace_id,
     ))

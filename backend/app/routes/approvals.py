@@ -53,7 +53,12 @@ def _require_owner(db: Session, user: User, workspace_id: str) -> None:
         WorkspaceMembership.workspace_id == workspace_id,
     ))
     if membership is None or membership.role != "owner":
-        raise ApiError(403, "APPROVER_ROLE_REQUIRED", "Only a workspace owner may issue or revoke approvals under the provisional Stage 5 policy.")
+        raise ApiError(
+            403,
+            "APPROVER_ROLE_REQUIRED",
+            "Only a workspace owner may issue or revoke approvals under the provisional "
+            "Stage 5 policy.",
+        )
 
 
 def _public(item: MissionApproval) -> ApprovalPublic:
@@ -84,9 +89,11 @@ def decide_approval(
     if mission is None:
         raise ApiError(404, "MISSION_NOT_FOUND", "The requested mission was not found.")
     if mission.state != "planned":
-        raise ApiError(409, "MISSION_NOT_PLANNED", "Approval can be issued only for a planned mission.")
+        raise ApiError(409, "MISSION_NOT_PLANNED",
+            "Approval can be issued only for a planned mission.")
     if user.id == mission.requester_id:
-        raise ApiError(403, "SEPARATION_OF_DUTIES_REQUIRED", "The mission requester cannot approve their own execution.")
+        raise ApiError(403, "SEPARATION_OF_DUTIES_REQUIRED",
+            "The mission requester cannot approve their own execution.")
     now = datetime.now(timezone.utc)
     record = MissionApproval(
         workspace_id=mission.workspace_id, mission_id=mission.id,
@@ -126,7 +133,8 @@ def revoke_approval(
     if record is None:
         raise ApiError(404, "APPROVAL_NOT_FOUND", "The requested approval was not found.")
     if record.consumed_at is not None:
-        raise ApiError(409, "APPROVAL_ALREADY_CONSUMED", "A consumed approval cannot be revoked retroactively.")
+        raise ApiError(409, "APPROVAL_ALREADY_CONSUMED",
+            "A consumed approval cannot be revoked retroactively.")
     if record.revoked_at is None:
         record.revoked_at = datetime.now(timezone.utc)
         db.add(AuditEvent(

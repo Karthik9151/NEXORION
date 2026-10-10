@@ -205,12 +205,14 @@ def simulate_mission(
         MissionJob.status == "queued",
     ))
     if job is None:
-        raise ApiError(409, "DURABLE_JOB_REQUIRED", "No matching queued job exists for this scenario and idempotency key.")
+        raise ApiError(409, "DURABLE_JOB_REQUIRED",
+            "No matching queued job exists for this scenario and idempotency key.")
     claimed_job = claim_next_job(
         db, worker_id=f"synthetic-api-worker:{user.id}", lease_seconds=60, job_id=job.id,
     )
     if claimed_job is None:
-        raise ApiError(409, "JOB_CLAIM_BLOCKED", "The job failed execution-boundary revalidation and requires review.")
+        raise ApiError(409, "JOB_CLAIM_BLOCKED",
+            "The job failed execution-boundary revalidation and requires review.")
     # Commit the lease and running state before work begins so recovery can observe it.
     # If the process dies during deterministic evaluation, the job remains running
     # until reconciliation marks the outcome uncertain; it is never silently replayed.

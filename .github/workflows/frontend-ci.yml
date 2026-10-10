@@ -12,6 +12,7 @@ on:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
       - "docs/stage4/**"
+      - "docs/stage5/**"
   workflow_dispatch:
 
 permissions:
