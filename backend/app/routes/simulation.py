@@ -25,7 +25,6 @@ from app.schemas import (
 )
 from app.services.job_leases import claim_next_job
 from app.services.lifecycle import transition_mission
-from app.stage5_models import MissionJob, MissionJobAttempt
 from app.simulation import (
     LIMITATIONS,
     RULE_SET_VERSION,
@@ -36,6 +35,7 @@ from app.simulation import (
     get_fixture,
     verify_fixture_result,
 )
+from app.stage5_models import MissionJob, MissionJobAttempt
 
 router = APIRouter(tags=["simulation"])
 _IDEMPOTENCY_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
