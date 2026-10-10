@@ -6,6 +6,7 @@ from collections.abc import Callable
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -18,7 +19,7 @@ from app.config import Settings, get_settings
 from app.db import build_engine, build_session_factory
 from app.dependencies import get_db
 from app.errors import ApiError
-from app.routes import auth, missions, simulation, system, world
+from app.routes import auth, missions, research, simulation, system, world
 
 logger = logging.getLogger("nexorion.api")
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -81,6 +82,21 @@ def create_app(
     app.state.settings = app_settings
     app.state.session_factory = session_factory
     app.state.engine = engine
+
+    cors_origins = [origin.strip() for origin in app_settings.cors_allowed_origins.split(",")
+                    if origin.strip()]
+    if "*" in cors_origins:
+        raise ValueError("Credentialed CORS requires explicit origins; wildcard is forbidden.")
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["Accept", "Content-Type", "X-Workspace-ID", "X-CSRF-Token",
+                           "Idempotency-Key", "X-Request-ID"],
+            expose_headers=["X-Request-ID"],
+        )
 
     @app.middleware("http")
     async def request_metadata_and_security_headers(
@@ -179,6 +195,7 @@ def create_app(
     app.include_router(system.router, prefix="/v1")
     app.include_router(world.router, prefix="/v1")
     app.include_router(simulation.router, prefix="/v1")
+    app.include_router(research.router, prefix="/v1")
 
     @app.get("/health", include_in_schema=False)
     def root_health() -> dict[str, str]:
