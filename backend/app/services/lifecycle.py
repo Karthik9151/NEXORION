@@ -119,6 +119,8 @@ def transition_mission(
         approval = approvals[0]
         if (
             approval.requester_id != mission.requester_id
+            or approval.approver_id is None
+            or approval.approver_id == mission.requester_id
             or approval.approved_scope != mission.scope
             or approval.plan_digest != canonical_mission_digest(mission)
         ):
