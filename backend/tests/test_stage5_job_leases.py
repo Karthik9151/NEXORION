@@ -44,11 +44,11 @@ def _seed_job(db: Session) -> tuple[Mission, MissionJob]:
         graph_digest=digest(snapshot), snapshot=snapshot, captured_by=user.id,
     ))
     now = datetime.now(timezone.utc)
-    digest = canonical_mission_digest(mission)
+    mission_digest = canonical_mission_digest(mission)
     approval = MissionApproval(
         workspace_id=workspace.id, mission_id=mission.id, requester_id=user.id,
         approver_id=approver.id, action_class="synthetic_simulation", approved_scope=mission.scope,
-        constraints={"synthetic_only": True}, plan_digest=digest, plan_version=1,
+        constraints={"synthetic_only": True}, plan_digest=mission_digest, plan_version=1,
         decision="approved", decision_reason="test", created_at=now,
         expires_at=now + timedelta(minutes=10), consumed_at=now,
     )
