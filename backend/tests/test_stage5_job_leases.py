@@ -103,7 +103,6 @@ def test_expired_lease_becomes_uncertain_not_queued() -> None:
 def test_worker_executes_claimed_job_and_leaves_origo_independent() -> None:
     engine = create_engine("sqlite://")
     Base.metadata.create_all(engine)
-    from app.db import build_session_factory
     factory = build_session_factory(engine)
     try:
         with Session(engine, expire_on_commit=False) as db:
