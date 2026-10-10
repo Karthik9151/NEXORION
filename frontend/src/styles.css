@@ -443,3 +443,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; }
 }
+
+/* Stage 4 integration: keep server report previews readable without changing the theme system. */
+.panel-heading-actions { display:flex; justify-content:flex-end; gap:8px; margin:0 16px 12px; }
+.report-preview-code {
+  margin: 0 16px 16px;
+  padding: 14px;
+  max-height: 440px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-soft);
+  color: var(--text-secondary);
+  font: 11px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
