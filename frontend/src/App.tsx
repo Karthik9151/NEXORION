@@ -209,6 +209,7 @@ function App() {
 
   const isSample = demoMode || apiStatus === "sample" || (!user && apiStatus === "offline");
   const selectedMission = missions.find((item) => item.id === selectedMissionId) || missions[0];
+  const selectedScenario = SCENARIOS.find((item) => item.id === selectedScenarioId) || SCENARIOS[0];
   const registeredScenarios = SCENARIOS.filter((item) => item.enabled);
 
   const notify = useCallback((message: string) => {
