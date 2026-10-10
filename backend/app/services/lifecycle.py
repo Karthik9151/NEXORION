@@ -4,6 +4,8 @@ Only command names map to transitions. Clients never submit a target state.
 Successful terminal outcomes require an explicitly trusted verifier caller.
 """
 from datetime import datetime, timezone
+import hashlib
+import json
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -64,6 +66,17 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def canonical_mission_digest(mission: Mission) -> str:
+    """Digest the persisted execution contract, not a model-generated plan."""
+    canonical = json.dumps({
+        "objective": mission.objective,
+        "scope": mission.scope,
+        "autonomy_tier": mission.autonomy_tier,
+        "mission_version": mission.version,
+    }, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def transition_mission(
     db: Session, *, mission: Mission, actor_id: str | None, actor_kind: str,
     command: str, expected_version: int, reason: str, request_id: str,
@@ -105,7 +118,11 @@ def transition_mission(
         if len(approvals) != 1:
             raise ApiError(409, "APPROVAL_AMBIGUOUS", "Approval records are contradictory; queueing is blocked.")
         approval = approvals[0]
-        if approval.requester_id != mission.requester_id or approval.approved_scope != mission.scope:
+        if (
+            approval.requester_id != mission.requester_id
+            or approval.approved_scope != mission.scope
+            or approval.plan_digest != canonical_mission_digest(mission)
+        ):
             raise ApiError(409, "APPROVAL_BINDING_MISMATCH", "Approval requester or scope does not match the mission.")
         approval.consumed_at = now
     now = _now()
