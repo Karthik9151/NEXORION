@@ -1,0 +1,3 @@
+# NEXORION backend runtime dependencies are declared in backend/pyproject.toml.
+# Editable local install keeps this file aligned with the canonical project manifest.
+-e ./backend
