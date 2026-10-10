@@ -5,7 +5,7 @@ from threading import Barrier
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
 from app.errors import ApiError
@@ -69,5 +69,29 @@ def test_concurrent_lifecycle_commands_have_one_winner() -> None:
             assert final is not None
             assert final.state == "validating"
             assert final.version == 2
+    finally:
+        engine.dispose()
+
+
+
+def test_pending_origo_outcome_fits_postgres_column() -> None:
+    """Guard the migration/model contract for the longest persisted Stage 5 outcome."""
+    marker = "simulation_completed_pending_origo"
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    try:
+        with engine.connect() as connection:
+            width = connection.execute(
+                text(
+                    "SELECT character_maximum_length "
+                    "FROM information_schema.columns "
+                    "WHERE table_schema = current_schema() "
+                    "AND table_name = 'mission_jobs' AND column_name = 'outcome'"
+                )
+            ).scalar_one_or_none()
+        assert width is not None, "mission_jobs.outcome must exist in the migrated schema"
+        assert width >= len(marker), (
+            f"mission_jobs.outcome is limited to {width} characters, "
+            f"but {marker!r} needs {len(marker)}"
+        )
     finally:
         engine.dispose()
