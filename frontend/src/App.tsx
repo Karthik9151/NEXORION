@@ -10,7 +10,7 @@ import {
   Background, Controls, MiniMap, ReactFlow, type Edge as FlowEdge, type Node as FlowNode,
 } from "@xyflow/react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { api, type AuthPayload, type Evidence, type Mission, type Scenario, type SimulationRun, type User, type Verification, type VerificationHistory, type Workspace, type WorldEntity, type WorldRelationship } from "./api";
+import { api, type AuthPayload, type Evidence, type Mission, type Scenario, type SimulationRun, type User, type VerificationHistory, type Workspace, type WorldEntity, type WorldRelationship } from "./api";
 
 type Screen = "missions" | "world" | "simulation" | "evidence" | "reports" | "settings";
 type Theme = "obsidian" | "polar";
@@ -25,7 +25,18 @@ const NAV: Array<{ id: Screen; label: string; icon: LucideIcon; group: string }>
   { id: "settings", label: "Settings", icon: Settings2, group: "SYSTEM" },
 ];
 
-type ScenarioCard = Scenario & { icon: LucideIcon };
+type ScenarioCard = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  enabled: boolean;
+  icon: LucideIcon;
+  fixture_version?: string;
+  rule_set_version?: string;
+  source_class?: "synthetic";
+  limitations?: string[];
+};
 
 const SCENARIO_FALLBACKS: ScenarioCard[] = [
   { id: "scenario-auth-failure-v1", name: "Authentication Failure Pattern", category: "IDENTITY", description: "Five synthetic failures followed by a success inside the fixed rule window.", enabled: true, icon: LockKeyhole },
