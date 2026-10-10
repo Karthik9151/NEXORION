@@ -92,6 +92,10 @@ jobs:
           DATABASE_URL: postgresql+psycopg://nexorion:nexorion-test-password@localhost:5432/nexorion_test
           APP_ENV: test
         run: alembic upgrade head
+      - name: Exercise API against migrated PostgreSQL schema
+        env:
+          NEXORION_TEST_DATABASE_URL: postgresql+psycopg://nexorion:nexorion-test-password@localhost:5432/nexorion_test
+        run: pytest -q tests/test_postgres_integration.py
       - name: Verify PostgreSQL downgrade and re-upgrade
         env:
           DATABASE_URL: postgresql+psycopg://nexorion:nexorion-test-password@localhost:5432/nexorion_test
