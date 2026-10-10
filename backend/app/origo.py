@@ -8,12 +8,20 @@ from app.simulation import digest
 ORIGO_VERIFIER_VERSION = "origo-synthetic-evidence-v1.0"
 ORIGO_SCHEMA_VERSION = "1.0"
 SUPPORTED_SCENARIOS = {
-    "scenario-auth-failure-v1": {"fixture_version": "1.0.0", "rule_set_version": "auth-failure-rules-v1"},
-    "scenario-auth-benign-control-v1": {"fixture_version": "1.0.0", "rule_set_version": "auth-failure-rules-v1"},
+    "scenario-auth-failure-v1": {
+        "fixture_version": "1.0.0",
+        "rule_set_version": "auth-failure-rules-v1",
+    },
+    "scenario-auth-benign-control-v1": {
+        "fixture_version": "1.0.0",
+        "rule_set_version": "auth-failure-rules-v1",
+    },
 }
 LIMITATIONS = [
-    "Verification covers persisted synthetic evidence only; no live system or external telemetry is inspected.",
-    "The authentication threshold is a teaching rule and is not calibrated for real-world detection.",
+    "Verification covers persisted synthetic evidence only; no live system or "
+    "external telemetry is inspected.",
+    "The authentication threshold is a teaching rule and is not calibrated "
+    "for real-world detection.",
     "A verified synthetic result is not proof of real-world malicious activity or compromise.",
 ]
 
@@ -78,7 +86,10 @@ def evaluate_persisted_run(run: Any, evidence_records: Sequence[Any]) -> dict[st
             if association_ok else "Evidence references do not match the owning run."))
         if not association_ok:
             failed = True
-            reasons.append("An evidence record has an inconsistent workspace, mission or run association.")
+            reasons.append(
+                "An evidence record has an inconsistent workspace, mission or "
+                "run association."
+            )
 
         payload = item.payload if isinstance(item.payload, dict) else None
         digest_ok = payload is not None and digest(payload) == item.content_digest
@@ -107,7 +118,11 @@ def evaluate_persisted_run(run: Any, evidence_records: Sequence[Any]) -> dict[st
             valid_payloads.append((item, payload))
 
     event_entry = next(
-        ((item, payload) for item, payload in valid_payloads if isinstance(payload.get("events"), list)),
+        (
+            (item, payload)
+            for item, payload in valid_payloads
+            if isinstance(payload.get("events"), list)
+        ),
         None,
     )
     if event_entry is None:
@@ -122,7 +137,11 @@ def evaluate_persisted_run(run: Any, evidence_records: Sequence[Any]) -> dict[st
         raw_events = event_payload.get("events")
         assert isinstance(raw_events, list)
         events = [item for item in raw_events if isinstance(item, dict)]
-        schema_ok = event_payload.get("payload_schema_version") == "1.0" and len(events) == len(raw_events) and bool(events)
+        schema_ok = (
+            event_payload.get("payload_schema_version") == "1.0"
+            and len(events) == len(raw_events)
+            and bool(events)
+        )
         if not schema_ok:
             insufficient = True
             checks.append(_check("event_payload_complete", None,
@@ -139,7 +158,8 @@ def evaluate_persisted_run(run: Any, evidence_records: Sequence[Any]) -> dict[st
         unique_ids = all(isinstance(value, str) for value in ids) and len(ids) == len(set(ids))
         event_shapes_ok = all(
             isinstance(event.get("event_id"), str) and bool(event.get("event_id"))
-            and isinstance(event.get("offset_seconds"), int) and event.get("offset_seconds", -1) >= 0
+            and isinstance(event.get("offset_seconds"), int)
+            and event.get("offset_seconds", -1) >= 0
             and isinstance(event.get("principal"), str) and bool(event.get("principal"))
             and isinstance(event.get("source_ip"), str) and bool(event.get("source_ip"))
             and event.get("outcome") in {"failure", "success"}
@@ -193,7 +213,10 @@ def evaluate_persisted_run(run: Any, evidence_records: Sequence[Any]) -> dict[st
             if compatible else "Scenario or version metadata is missing or unsupported."))
         if not compatible:
             insufficient = True
-            reasons.append("The evidence does not match a scenario/version supported by this verifier.")
+            reasons.append(
+                "The evidence does not match a scenario/version supported by "
+                "this verifier."
+            )
 
         if event_shapes_ok and unique_ids and count_ok and ordered and compatible:
             try:
@@ -204,12 +227,24 @@ def evaluate_persisted_run(run: Any, evidence_records: Sequence[Any]) -> dict[st
             if evaluated_outcome is not None:
                 run_claim_matches = run.outcome == evaluated_outcome
                 payload_claim_matches = event_payload.get("outcome") == evaluated_outcome
-                checks.append(_check("independent_outcome_matches_run", run_claim_matches,
-                    "Persisted events support the run outcome."
-                    if run_claim_matches else "Run outcome conflicts with independent event analysis."))
-                checks.append(_check("independent_outcome_matches_evidence", payload_claim_matches,
-                    "Persisted events support the evidence outcome."
-                    if payload_claim_matches else "Evidence outcome conflicts with independent event analysis."))
+                checks.append(
+                    _check(
+                        "independent_outcome_matches_run",
+                        run_claim_matches,
+                        "Persisted events support the run outcome."
+                        if run_claim_matches
+                        else "Run outcome conflicts with independent event analysis.",
+                    )
+                )
+                checks.append(
+                    _check(
+                        "independent_outcome_matches_evidence",
+                        payload_claim_matches,
+                        "Persisted events support the evidence outcome."
+                        if payload_claim_matches
+                        else "Evidence outcome conflicts with independent event analysis.",
+                    )
+                )
                 if not run_claim_matches or not payload_claim_matches:
                     disputed = True
                     discrepancies.append({
@@ -217,11 +252,22 @@ def evaluate_persisted_run(run: Any, evidence_records: Sequence[Any]) -> dict[st
                         "evidence_outcome": str(event_payload.get("outcome", "missing")),
                         "independent_outcome": evaluated_outcome,
                     })
-                    reasons.append("Recorded outcome claims conflict with the independently evaluated events.")
-                support_matches = event_payload.get("supporting_event_ids") == evaluated_supporting_ids
-                checks.append(_check("supporting_events_match_analysis", support_matches,
-                    "Supporting-event references match independent event analysis."
-                    if support_matches else "Supporting-event references differ from independent analysis."))
+                    reasons.append(
+                        "Recorded outcome claims conflict with the independently "
+                        "evaluated events."
+                    )
+                support_matches = (
+                    event_payload.get("supporting_event_ids") == evaluated_supporting_ids
+                )
+                checks.append(
+                    _check(
+                        "supporting_events_match_analysis",
+                        support_matches,
+                        "Supporting-event references match independent event analysis."
+                        if support_matches
+                        else "Supporting-event references differ from independent analysis.",
+                    )
+                )
                 if not support_matches:
                     disputed = True
                     discrepancies.append({
@@ -229,7 +275,10 @@ def evaluate_persisted_run(run: Any, evidence_records: Sequence[Any]) -> dict[st
                         "recorded": event_payload.get("supporting_event_ids"),
                         "independent": evaluated_supporting_ids,
                     })
-                    reasons.append("Supporting-event references conflict with independent event analysis.")
+                    reasons.append(
+                        "Supporting-event references conflict with independent "
+                        "event analysis."
+                    )
 
     if event_entry is not None:
         payload = event_entry[1]
@@ -273,11 +322,16 @@ def evaluate_persisted_run(run: Any, evidence_records: Sequence[Any]) -> dict[st
         status = "inconclusive"
     else:
         status = "verified"
-        reasons.append("Persisted synthetic events passed integrity, provenance, sequence and independent rule evaluation.")
+        reasons.append(
+            "Persisted synthetic events passed integrity, provenance, sequence "
+            "and independent rule evaluation."
+        )
 
     return {
         "status": status, "verifier_version": ORIGO_VERIFIER_VERSION,
-        "schema_version": ORIGO_SCHEMA_VERSION, "checks": checks, "reasons": reasons or ["No verification reason was produced."],
+        "schema_version": ORIGO_SCHEMA_VERSION,
+        "checks": checks,
+        "reasons": reasons or ["No verification reason was produced."],
         "discrepancies": discrepancies, "evidence_ids": evidence_ids,
         "evidence_fingerprints": fingerprints, "limitations": list(LIMITATIONS),
         "independent_outcome": evaluated_outcome,
