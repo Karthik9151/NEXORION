@@ -286,4 +286,4 @@ class OrigoVerification(Base):
 
 
 # Register Stage 5 tables with shared SQLAlchemy metadata for Alembic.
-import app.stage5_models  # noqa: E402, F401
+import app.stage5_models  # noqa: E402, F401, I001
