@@ -57,5 +57,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index("ix_origo_verifications_workspace_run_created", table_name="origo_verifications")
-    op.drop_index("ix_origo_verifications_workspace_mission_created", table_name="origo_verifications")
+    op.drop_index(
+        "ix_origo_verifications_workspace_mission_created",
+        table_name="origo_verifications",
+    )
     op.drop_table("origo_verifications")
