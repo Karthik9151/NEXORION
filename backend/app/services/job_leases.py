@@ -116,6 +116,11 @@ def heartbeat_job(db: Session, *, job_id: str, worker_id: str, lease_seconds: in
         raise ApiError(404, "JOB_NOT_FOUND", "The requested job was not found.")
     if job.lease_owner != worker_id or job.status != "running":
         raise ApiError(409, "LEASE_NOT_OWNED", "This worker does not hold the active job lease.")
+    expiry = job.lease_expires_at
+    if expiry is not None and expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    if expiry is None or expiry <= now:
+        raise ApiError(409, "LEASE_EXPIRED", "An expired lease cannot be renewed; reconcile the uncertain attempt.")
     if job.cancel_requested_at is not None:
         raise ApiError(409, "CANCELLATION_REQUESTED", "The worker must stop and confirm termination.")
     if not 5 <= lease_seconds <= 120:
