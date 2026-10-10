@@ -10,7 +10,7 @@ import {
   Background, Controls, MiniMap, ReactFlow, type Edge as FlowEdge, type Node as FlowNode,
 } from "@xyflow/react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { api, type AuthPayload, type Evidence, type Mission, type Scenario, type SimulationRun, type User, type VerificationHistory, type Workspace, type WorldEntity, type WorldRelationship } from "./api";
+import { api, type AuthPayload, type Evidence, type Mission, type SimulationRun, type User, type VerificationHistory, type Workspace, type WorldEntity, type WorldRelationship } from "./api";
 
 type Screen = "missions" | "world" | "simulation" | "evidence" | "reports" | "settings";
 type Theme = "obsidian" | "polar";
