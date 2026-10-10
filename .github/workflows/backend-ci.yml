@@ -85,8 +85,8 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/pyproject.toml
-      - name: Install backend
-        run: python -m pip install -e .
+      - name: Install backend and test dependencies
+        run: python -m pip install -e ".[test]"
       - name: Upgrade fresh PostgreSQL database
         env:
           DATABASE_URL: postgresql+psycopg://nexorion:nexorion-test-password@localhost:5432/nexorion_test
