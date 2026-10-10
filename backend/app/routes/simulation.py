@@ -217,7 +217,8 @@ def simulate_mission(
         if current_job.status in {"review_required", "uncertain", "failed", "cancelled"}:
             raise ApiError(
                 409, "JOB_REQUIRES_REVIEW",
-                "The durable job did not complete. Review its persisted state before taking further action.",
+                "The durable job did not complete. Review its persisted state "
+                "before taking further action.",
             )
         if current_job.status == "succeeded":
             raise ApiError(409, "JOB_RESULT_MISSING",
@@ -226,7 +227,8 @@ def simulate_mission(
 
     raise ApiError(
         409, "JOB_STILL_RUNNING",
-        "The durable job has not completed yet. Retry the same request with the same idempotency key.",
+        "The durable job has not completed yet. Retry the same request "
+        "with the same idempotency key.",
         retryable=True,
     )
 
