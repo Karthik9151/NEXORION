@@ -23,13 +23,12 @@ from app.schemas import (
 )
 from app.services.job_leases import claim_next_job
 from app.services.synthetic_worker import execute_claimed_job
-from app.services.lifecycle import transition_mission
 from app.simulation import (
     SCENARIO_REGISTRY,
     digest,
     get_fixture,
 )
-from app.stage5_models import MissionJob, MissionJobAttempt
+from app.stage5_models import MissionJob
 
 router = APIRouter(tags=["simulation"])
 _IDEMPOTENCY_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
@@ -230,6 +229,7 @@ def simulate_mission(
         "The durable job has not completed yet. Retry the same request with the same idempotency key.",
         retryable=True,
     )
+
 
 @router.get("/missions/{mission_id}/runs", response_model=list[SimulationRunPublic])
 def list_mission_runs(
