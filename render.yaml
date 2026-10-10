@@ -15,6 +15,10 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
+      - key: NEXORION_BOOTSTRAP_OWNER_EMAIL
+        sync: false
+      - key: NEXORION_BOOTSTRAP_OWNER_PASSWORD
+        sync: false
       - key: SESSION_COOKIE_SECURE
         value: "true"
       - key: ALLOW_SELF_REGISTRATION
