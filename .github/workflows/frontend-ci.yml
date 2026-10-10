@@ -40,6 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ENV: test
+      NEXORION_WORKER_ENABLED: "true"
       DATABASE_URL: sqlite:////tmp/nexorion-stage4-e2e.db
       NEXORION_API_ORIGIN: http://127.0.0.1:8000
     defaults:
