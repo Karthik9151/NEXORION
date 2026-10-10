@@ -95,10 +95,18 @@ jobs:
           DATABASE_URL: postgresql+psycopg://nexorion:nexorion-test-password@localhost:5432/nexorion_test
           APP_ENV: test
         run: alembic upgrade head
-      - name: Exercise API against migrated PostgreSQL schema
+      - name: Create isolated PostgreSQL API test database
+        run: |
+          python - <<'PY'
+          import psycopg
+          with psycopg.connect("postgresql://nexorion:nexorion-test-password@localhost:5432/postgres", autocommit=True) as connection:
+              connection.execute("CREATE DATABASE nexorion_api_test")
+          PY
+      - name: Run full backend suite against PostgreSQL 16
         env:
+          NEXORION_API_TEST_DATABASE_URL: postgresql+psycopg://nexorion:nexorion-test-password@localhost:5432/nexorion_api_test
           NEXORION_TEST_DATABASE_URL: postgresql+psycopg://nexorion:nexorion-test-password@localhost:5432/nexorion_test
-        run: pytest -q tests/test_postgres_integration.py
+        run: pytest -q
       - name: Verify PostgreSQL downgrade and re-upgrade
         env:
           DATABASE_URL: postgresql+psycopg://nexorion:nexorion-test-password@localhost:5432/nexorion_test
