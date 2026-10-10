@@ -56,7 +56,7 @@ def _seed_job(db: Session) -> tuple[Mission, MissionJob]:
     db.flush()
     job = MissionJob(
         workspace_id=workspace.id, mission_id=mission.id, approval_id=approval.id,
-        plan_digest=digest, plan_version=1, scenario_id="scenario-auth-failure-v1",
+        plan_digest=mission_digest, plan_version=1, scenario_id="scenario-auth-failure-v1",
         idempotency_key="lease-test-key-001", status="queued", attempt_count=0,
         max_attempts=2, evidence_refs=[], created_at=now, updated_at=now,
     )
