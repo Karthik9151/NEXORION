@@ -4,7 +4,8 @@ from app.simulation import SCENARIO_REGISTRY, evaluate_fixture, get_fixture, ver
 from tests.helpers import csrf_headers, mission_payload, register
 
 
-def _create_simulation_mission(client: TestClient, workspace_id: str, scenario_id: str = "scenario-auth-failure-v1") -> str:
+def _create_simulation_mission(client: TestClient, workspace_id: str,
+    scenario_id: str = "scenario-auth-failure-v1") -> str:
     payload = mission_payload()
     payload["autonomy_tier"] = "simulate_synthetic"
     payload["scope"]["scenario_ids"] = [scenario_id]
