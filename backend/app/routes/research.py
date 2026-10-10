@@ -22,8 +22,8 @@ from app.models import (
     new_id,
 )
 from app.origo import LIMITATIONS, ORIGO_VERIFIER_VERSION, evaluate_persisted_run
-from app.services.lifecycle import transition_mission
 from app.schemas import VerificationHistoryPublic, VerificationPublic
+from app.services.lifecycle import transition_mission
 from app.simulation import RULE_SET_VERSION, SCENARIO_REGISTRY
 
 router = APIRouter(tags=["research"])
