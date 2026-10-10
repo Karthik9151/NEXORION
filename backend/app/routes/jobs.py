@@ -11,7 +11,11 @@ from app.dependencies import get_current_user, get_db, require_csrf, require_wor
 from app.errors import ApiError
 from app.models import AuditEvent, Mission, User, WorldSnapshot
 from app.schemas import StrictModel
-from app.services.lifecycle import (\n    canonical_mission_digest,\n    canonical_plan_document,\n    transition_mission,\n)
+from app.services.lifecycle import (
+    canonical_mission_digest,
+    canonical_plan_document,
+    transition_mission,
+)
 from app.simulation import SCENARIO_REGISTRY
 from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt, MissionPlan
 
