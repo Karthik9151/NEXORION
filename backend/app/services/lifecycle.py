@@ -72,7 +72,6 @@ def canonical_mission_digest(mission: Mission) -> str:
         "objective": mission.objective,
         "scope": mission.scope,
         "autonomy_tier": mission.autonomy_tier,
-        "mission_version": mission.version,
     }, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
