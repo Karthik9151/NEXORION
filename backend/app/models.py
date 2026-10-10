@@ -6,6 +6,7 @@ from uuid import uuid4
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -237,5 +238,42 @@ class EvidenceRecord(Base):
     content_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     limitations: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
+        default=utcnow)
+
+
+class OrigoVerification(Base):
+    """Append-only record of one Origo verification attempt."""
+
+    __tablename__ = "origo_verifications"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('verified', 'failed', 'disputed', 'inconclusive')",
+            name="ck_origo_verification_status",
+        ),
+        UniqueConstraint("workspace_id", "run_id", "idempotency_key",
+            name="uq_origo_verification_idempotency"),
+        Index("ix_origo_verifications_workspace_mission_created",
+            "workspace_id", "mission_id", "created_at"),
+        Index("ix_origo_verifications_workspace_run_created",
+            "workspace_id", "run_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    schema_version: Mapped[str] = mapped_column(String(16), nullable=False, default="1.0")
+    workspace_id: Mapped[str] = mapped_column(ForeignKey("workspaces.id", ondelete="RESTRICT"),
+        nullable=False)
+    mission_id: Mapped[str] = mapped_column(ForeignKey("missions.id", ondelete="RESTRICT"),
+        nullable=False)
+    run_id: Mapped[str] = mapped_column(ForeignKey("simulation_runs.id", ondelete="RESTRICT"),
+        nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    verifier_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    checks: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+    reasons: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    discrepancies: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+    evidence_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    evidence_fingerprints: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
         default=utcnow)
