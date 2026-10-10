@@ -12,6 +12,7 @@ on:
     paths:
       - "backend/**"
       - "docs/stage2/**"
+      - "docs/stage3/**"
       - ".github/workflows/backend-ci.yml"
 
 permissions:
