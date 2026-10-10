@@ -36,12 +36,12 @@ Stop other services using ports 8000 or 4173 before running locally.
 
 - Passing automated tests validate the synthetic fixture workflows and application contracts, not real-world security research effectiveness.
 - The repository does not currently provide a production deployment acceptance test or hosted browser test against a deployment; those require an approved deployment environment and credentials.
-- A human review of the generated interface at desktop/mobile breakpoints and a final pull-request review remain required before merging to `main`.
+- Automated desktop/mobile browser interaction and horizontal-overflow checks pass. A human visual review against the design board and a hosted smoke test remain recommended pre-production release gates; they have not been performed in this environment.
 - Branch-protection enforcement is not assumed. A green workflow is evidence of a completed check, not proof that GitHub prevents a bypass merge.
 
 ## Release decision
 
-Do not merge Stage 4 until the final pull-request head has green Frontend CI (build and browser E2E), green Backend CI (Python checks and SQLite/PostgreSQL migration/API checks), and a reviewed diff. Record the final run URLs and any unresolved limitations below.
+Merge Stage 4 only after the final pull-request head has green Frontend CI (build and browser E2E), green Backend CI (Python checks and SQLite/PostgreSQL migration/API checks), and a completed source-level security/diff review. The hosted smoke test and human visual sign-off remain required before describing the deployed product as production-released.
 
 ### Final run record
 
