@@ -1,7 +1,6 @@
 """Authorized, idempotent execution of fixed synthetic scenarios only."""
 
 import re
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 from sqlalchemy import select
@@ -29,7 +28,6 @@ from app.simulation import (
     RULE_SET_VERSION,
     SCENARIO_REGISTRY,
     SIMULATOR_VERSION,
-    canonical_json,
     digest,
     evaluate_fixture,
     get_fixture,
