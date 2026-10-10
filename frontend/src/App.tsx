@@ -550,13 +550,15 @@ function App() {
         notify("Sample simulation complete. Results are illustrative and not persisted.");
       } else {
         if (!user || apiStatus !== "online" || !workspaceId) throw new Error("The API is unavailable. Reconnect before running a simulation.");
-        if (selectedMission.state !== "draft") throw new Error("This mission is not a draft. Refresh the server-owned mission state before continuing.");
+        if (!["draft", "planned"].includes(selectedMission.state)) throw new Error("This mission is not eligible for a new queue request. Refresh the server-owned mission state.");
         if (selectedMission.autonomy_tier !== "simulate_synthetic") throw new Error("This mission does not have the simulate_synthetic autonomy tier.");
-        await api.captureBaseline(workspaceId, selectedMission.id);
         let currentMission = selectedMission;
-        for (const command of ["validate", "validation_passed", "begin_planning", "plan_ready"]) {
-          currentMission = await api.missionCommand(workspaceId, currentMission.id, command, currentMission.version);
-          setMissions((current) => current.map((mission) => mission.id === currentMission.id ? currentMission : mission));
+        if (currentMission.state === "draft") {
+          await api.captureBaseline(workspaceId, currentMission.id);
+          for (const command of ["validate", "validation_passed", "begin_planning", "plan_ready"]) {
+            currentMission = await api.missionCommand(workspaceId, currentMission.id, command, currentMission.version);
+            setMissions((current) => current.map((mission) => mission.id === currentMission.id ? currentMission : mission));
+          }
         }
         const idempotencyKey = "nexorion-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
         await api.enqueueJob(workspaceId, currentMission.id, selectedScenario.id, idempotencyKey);
