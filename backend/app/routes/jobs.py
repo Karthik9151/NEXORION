@@ -122,7 +122,13 @@ def enqueue_job(
     ))
     if denied is not None:
         raise ApiError(403, "APPROVAL_DENIED", "A current approval denial blocks queueing.")
-    approvals = [item for item in approvals if item.approved_scope == mission.scope]
+    approvals = [
+        item for item in approvals
+        if item.approved_scope == mission.scope
+        and item.requester_id == mission.requester_id
+        and item.approver_id is not None
+        and item.approver_id != mission.requester_id
+    ]
     if len(approvals) != 1:
         raise ApiError(409, "APPROVAL_REQUIRED", "Exactly one current, unconsumed approval must match the mission contract.")
     approval = approvals[0]
