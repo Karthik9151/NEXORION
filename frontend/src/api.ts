@@ -16,8 +16,19 @@ export interface WorldRelationship {
   id: string; from_entity_id: string; to_entity_id: string; relationship_type: string; source_class: "synthetic";
 }
 export interface Verification {
-  status: string; checks?: Array<{ check: string; passed: boolean }>; scope?: string; limitations?: string[];
+  id?: string; status: "verified" | "failed" | "disputed" | "inconclusive" | string;
+  verifier_version?: string;
+  checks?: Array<{ check: string; passed: boolean | null; reason?: string }>;
+  reasons?: string[]; discrepancies?: Array<Record<string, unknown>>;
+  evidence_ids?: string[]; evidence_fingerprints?: Record<string, string>;
+  scope?: string; limitations?: string[]; created_at?: string;
 }
+export interface VerificationHistory { items: Verification[]; latest: Verification | null; }
+export interface Scenario {
+  id: string; name: string; category: string; description: string; enabled: boolean;
+  fixture_version: string; rule_set_version: string; source_class: "synthetic"; limitations: string[];
+}
+export interface ScenarioCatalog { items: Scenario[]; catalog_version: string; }
 export interface Evidence {
   id: string; evidence_type: string; source_class: "synthetic"; source_ref: string; producer?: string;
   producer_version?: string; content_digest: string; payload: Record<string, unknown>;
@@ -37,6 +48,23 @@ function readCookie(name: string): string {
   if (!value) return "";
   try { return decodeURIComponent(value.slice(prefix.length)); }
   catch { return value.slice(prefix.length); }
+}
+
+async function requestText(path: string, workspaceId: string): Promise<string> {
+  const headers = new Headers({ Accept: "text/markdown" });
+  headers.set("X-Workspace-ID", workspaceId);
+  const response = await fetch(API_BASE + path, { method: "GET", headers, credentials: "include" });
+  if (!response.ok) {
+    let message = "The request could not be completed.";
+    let code = "REQUEST_FAILED";
+    try {
+      const payload = await response.json();
+      message = payload?.error?.message || message;
+      code = payload?.error?.code || code;
+    } catch { message = response.statusText || message; }
+    throw new Error(code + ": " + message);
+  }
+  return response.text();
 }
 
 async function request<T>(path: string, options: {
@@ -92,4 +120,13 @@ export const api = {
     request<SimulationRun[]>("/v1/missions/" + encodeURIComponent(missionId) + "/runs?limit=100", { workspaceId }),
   simulate: (workspaceId: string, missionId: string, scenarioId: string, idempotencyKey: string) =>
     request<SimulationRun>("/v1/missions/" + encodeURIComponent(missionId) + "/simulate", { method: "POST", workspaceId, idempotencyKey, body: { scenario_id: scenarioId } }),
+  scenarios: () => request<ScenarioCatalog>("/v1/scenarios"),
+  verifyRun: (workspaceId: string, missionId: string, runId: string, idempotencyKey: string) =>
+    request<Verification>("/v1/missions/" + encodeURIComponent(missionId) + "/runs/" + encodeURIComponent(runId) + "/verify", { method: "POST", workspaceId, idempotencyKey }),
+  verificationHistory: (workspaceId: string, missionId: string, runId: string) =>
+    request<VerificationHistory>("/v1/missions/" + encodeURIComponent(missionId) + "/runs/" + encodeURIComponent(runId) + "/verification", { workspaceId }),
+  missionReport: (workspaceId: string, missionId: string) =>
+    request<Record<string, unknown>>("/v1/missions/" + encodeURIComponent(missionId) + "/report", { workspaceId }),
+  missionReportMarkdown: (workspaceId: string, missionId: string) =>
+    requestText("/v1/missions/" + encodeURIComponent(missionId) + "/report.md", workspaceId),
 };
