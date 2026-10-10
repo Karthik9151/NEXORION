@@ -70,8 +70,10 @@ def create_app(
         title="NEXORION API",
         version="0.2.0",
         description=(
-            "Authenticated workspace API with a synthetic digital-world graph, versioned baselines, "
-            "and deterministic registered-fixture simulations. Live-system execution is not exposed."
+            "Authenticated workspace API with a synthetic digital-world graph, "
+            "versioned baselines, and deterministic registered-fixture simulations. "
+            "Live-system execution is not exposed."
+            "and deterministic registered-fixture simulations. Live-system execution is not exposed."  # noqa: E501
         ),
         docs_url=None if app_settings.app_env == "production" else "/docs",
         redoc_url=None if app_settings.app_env == "production" else "/redoc",
