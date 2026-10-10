@@ -46,6 +46,37 @@ class MissionTransitionEvent(Base):
         default=_utcnow)
 
 
+class MissionPlan(Base):
+    """Append-only typed execution contract consumed by approvals and jobs."""
+
+    __tablename__ = "mission_plans"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "mission_id", "plan_version",
+            name="uq_mission_plan_version",
+        ),
+        Index("ix_mission_plan_workspace_mission", "workspace_id", "mission_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    mission_id: Mapped[str] = mapped_column(
+        ForeignKey("missions.id", ondelete="RESTRICT"), nullable=False
+    )
+    plan_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(16), nullable=False, default="1.0")
+    plan_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    plan_document: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+
 class MissionApproval(Base):
     __tablename__ = "mission_approvals"
     __table_args__ = (
@@ -57,6 +88,9 @@ class MissionApproval(Base):
         nullable=False)
     mission_id: Mapped[str] = mapped_column(ForeignKey("missions.id", ondelete="RESTRICT"),
         nullable=False)
+    plan_id: Mapped[str | None] = mapped_column(
+        ForeignKey("mission_plans.id", ondelete="RESTRICT"), nullable=True
+    )
     requester_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False)
     approver_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"),
@@ -92,6 +126,9 @@ class MissionJob(Base):
         nullable=False)
     approval_id: Mapped[str | None] = mapped_column(ForeignKey("mission_approvals.id",
         ondelete="RESTRICT"), nullable=True)
+    plan_id: Mapped[str | None] = mapped_column(
+        ForeignKey("mission_plans.id", ondelete="RESTRICT"), nullable=True
+    )
     plan_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     plan_version: Mapped[int] = mapped_column(Integer, nullable=False)
     scenario_id: Mapped[str] = mapped_column(String(100), nullable=False)
