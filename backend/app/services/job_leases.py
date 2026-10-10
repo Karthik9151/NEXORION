@@ -54,6 +54,10 @@ def claim_next_job(
         and canonical_mission_digest(mission) == job.plan_digest
         and mission.version == job.plan_version + 1
         and approval is not None and approval.decision == "approved"
+        and approval.action_class == "synthetic_simulation"
+        and approval.requester_id == mission.requester_id
+        and approval.approver_id is not None
+        and approval.approver_id != mission.requester_id
         and approval.plan_digest == job.plan_digest
         and approval.plan_version == job.plan_version
         and approval.approved_scope == mission.scope
