@@ -57,3 +57,18 @@ Merge Stage 4 only after the final pull-request head has green Frontend CI (buil
 - **Hosted deployment smoke test / human visual review of the deployed service: NOT RUN.** This environment did not authenticate to or exercise a hosted NEXORION deployment. Complete these checks before describing the service as production-released.
 
 The latest code-bearing commit had all required automated CI checks green. The acceptance-document and workflow-filter updates also trigger a fresh PR-head CI run; merge remains gated on those fresh checks.
+
+## Acceptance recheck — 10 October 2026, PR #16
+
+This recheck is additive to the historical Stage 4 record above. It refers to the Stage 4/5 acceptance-fix branch, not to `main` or to a production release.
+
+**Code-bearing commit checked:** `f988447188f15a106f894049fc578e16bbf1c75c`
+
+- **Frontend production build: PASS** — [Frontend CI run #105](https://github.com/Karthik9151/NEXORION/actions/runs/38051448500).
+- **Playwright/Chromium: PASS, 4/4 tests** — same run. Coverage: safe invalid-login feedback; registration, workspace isolation, graph, approval gate, reporting and mobile navigation; persisted Origo verification; session persistence, CSRF denial and logout revocation.
+- **Production container build / non-root runtime assertion: PASS** — same run; configured image user is `nexorion`.
+- **Backend tests and Ruff: PASS on Python 3.11 and 3.12; SQLite migration round-trip: PASS; PostgreSQL 16 full API suite and migration downgrade/re-upgrade: PASS** — [Backend CI run #195](https://github.com/Karthik9151/NEXORION/actions/runs/38051447065).
+- **Read-only public staging checks: PASS for the environment observed separately** — the deployed `main` service served `/`; `/health` returned `{"status":"ok"}`; `/ready` and `/v1/ready` returned `{"status":"ready"}`; unauthenticated `GET /v1/auth/me`, `GET /v1/missions`, and `GET /v1/scenarios` returned `401`. These checks do not prove a signed-in hosted session or that the PR branch is deployed.
+- **Hosted authenticated browser test / human visual and accessibility sign-off: NOT RUN.** No signed-in staging browser profile or test credentials were available. Do not represent these as passed.
+
+**Stage 4 verdict:** the automated regression gates pass on this PR head. Full deployed acceptance remains conditional on a signed-in staging check, human visual/accessibility review, and final PR-head CI after any further changes. Keep PR #16 in draft and do not merge on the basis of this record alone.
