@@ -4,6 +4,10 @@
 
 The source documents use different phase structures (0–5, 0–7, and 0–8) and place some work in different phases. This roadmap groups the shared intent into delivery gates without claiming any phase is complete.
 
+## Live implementation tracking
+
+Use [Stage 4 implementation tracker](stage4/03_IMPLEMENTATION_TRACKER.md) for the dated status snapshot, evidence links, $0 cost gate, deployment blockers, and Stage 5–8 task-level acceptance matrix. This roadmap describes intended phases and acceptance criteria; the tracker records whether evidence exists. A phase is not complete unless the required source, tests, owner decisions, and release gates are evidenced.
+
 ## Phase 0 — Requirements and contracts
 
 **Deliverables:** glossary and identity hierarchy; mission contract; world/evidence data concepts; autonomy tiers; threat boundaries; measurable acceptance criteria.
@@ -75,3 +79,47 @@ The first complete demonstration should be a synthetic authentication-failure mi
 ## Status tracking
 
 Do not mark a phase complete based on a plan or checklist alone. Completion requires artifacts and evidence that satisfy each acceptance criterion. Track planned, in progress, blocked, and verified separately.
+
+
+## Stage 1 blueprint acceptance detail
+
+Stage 1 expands blueprint finalization into a reviewable, traceable contract package. Its acceptance gate is [`stage1/07_REQUIREMENT_TO_TEST_TRACEABILITY.md`](stage1/07_REQUIREMENT_TO_TEST_TRACEABILITY.md), with overall delivery scope in [`stage1/09_STAGE1_DELIVERY_REVIEW.md`](stage1/09_STAGE1_DELIVERY_REVIEW.md).
+
+Required deliverables:
+
+1. Stable, prioritized requirements with dependencies and verification evidence.
+2. Versioned mission/world/relationship/scenario/baseline/task/evidence/approval/verification/report contracts and a proposed `/v1` API surface.
+3. Explicit mission transitions, blocked states, terminal outcomes, cancellation, bounded retries, idempotency and recovery behavior.
+4. Clear autonomy tiers, workspace isolation, execution-time authorization checks, approval binding, evidence provenance, secret handling and fail-closed rules.
+5. Technology decision records that distinguish proposed choices from open decisions and deferred components.
+6. A deterministic synthetic authentication-failure scenario with benign and malformed negative controls, independent verification and report limitations.
+7. Requirement-to-test traceability and explicit owner decisions that remain unresolved.
+
+**Acceptance status must remain `proposed` until the project owner reviews and accepts the blueprint.** This documentation gate does not mean application code exists or that runtime/security tests have passed. Later implementation phases must produce executable tests and evidence before any functional acceptance claim.
+
+
+## Stage 2 implementation status — application foundation
+
+**Branch:** stage2  
+**Status:** Implemented for pull-request review; CI and release acceptance are still pending.
+
+Stage 2 begins the roadmap's Phase 1 application foundation. The branch introduces a FastAPI backend, local account/session adapter, workspace membership authorization, mission draft create/list/read endpoints, SQLAlchemy models, an initial Alembic migration, structured API errors, request IDs, basic security headers, audit events, API tests, and a backend CI workflow.
+
+### Phase 1 progress
+
+- **Implemented in the branch:** authenticated mission draft persistence; server-side workspace access checks; strict request contracts; synthetic-only mission scope; health/readiness endpoints; a repeatable local test suite and database migration.
+- **Still required before Phase 1 acceptance:** a passing GitHub Actions run, PostgreSQL integration and migration validation, persistence/restart verification against PostgreSQL, production identity/account-bootstrap decisions, rate limiting/abuse controls, dependency and secret scanning, and a security review.
+- **Not part of this stage:** digital-world graph interactions, baseline snapshots, synthetic investigation execution, evidence provenance/verifier, durable mission state machine, agent orchestration, frontend, deployment, or lab/live-system access.
+
+See the Stage 2 index at docs/stage2/00_STAGE2_INDEX.md and the backend setup guide at backend/README.md. Passing unit/API tests is not a production security certification and does not complete later roadmap phases.
+
+
+## Stage 3 implementation status — digital world and deterministic simulation
+
+**Branch:** stage3-digital-world  
+**Status:** Verified for the defined Stage 3 synthetic-only scope on commit `04b13f4a3f21e07c242e268fe45ab7396ab4954a`; [GitHub Actions passed](https://github.com/Karthik9151/NEXORION/actions/runs/38026378118), including Python 3.11/3.12 tests and Ruff, SQLite migration round-trip, PostgreSQL 16 migration round-trip, and a PostgreSQL API smoke test. This is not production acceptance.
+
+- **Implemented in the branch:** synthetic entity and relationship routes; workspace isolation; versioned baselines with canonical digests; fixed suspicious-pattern and benign-control fixtures; deterministic simulation runs; idempotency-key enforcement; evidence provenance/digests; bounded mission-state transitions and audit events; API regression tests.
+- **Not included:** visual graph editing, arbitrary/custom executable scenarios, live asset discovery, external telemetry, network/host execution, full Origo verification, model-backed agents, durable distributed workflows, and isolated lab execution.
+- **Acceptance evidence:** GitHub Actions passed on commit `04b13f4a3f21e07c242e268fe45ab7396ab4954a`; fresh SQLite and PostgreSQL 16 migration round-trips passed; the PostgreSQL-backed API smoke test passed; reviewed tests cover synthetic-only scope and cross-workspace negative cases. This verifies only the bounded Stage 3 slice, not production readiness, a full independent Origo verifier, or live-system capability.
+- **Details:** see docs/stage3/00_STAGE3_INDEX.md.

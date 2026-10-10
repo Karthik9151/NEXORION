@@ -1,42 +1,57 @@
 # Technology Stack and Decision Status
 
-This document reconciles the technology direction recorded in the planning files. **A technology mentioned here is not thereby installed or implemented.** The supplied archive contains no source code or dependency manifests.
+**Reviewed:** 10 October 2026  
+**Scope:** repository files on `stage4-implementation`, plus the uploaded Technology Cross-Check, Deployment Plan and Owner Report.  
+**Cost rule:** development, tests, and planned implementation must remain at **$0 out-of-pocket**. The presence of a dependency or proposal is not evidence of a working integration.
 
-## Proposed implementation baseline
+## Verified repository technologies
 
-| Area | Direction in planning documents | Intended purpose | Status |
-|---|---|---|---|
-| Frontend | React + TypeScript + Vite | Interactive research workspace | Selected design direction; unverified |
-| World visualization | React Flow | Interactive nodes, relationships, and workflow views | Initial visualization choice; unverified |
-| Backend API | Python + FastAPI + Pydantic | API boundary, validation, typed contracts | Selected design direction; unverified |
-| Primary persistence | PostgreSQL | Durable mission, world, evidence, and audit records | Selected design direction; unverified |
-| Graph analysis | NetworkX | Initial in-process graph analysis | Initial choice; unverified |
-| Live updates | WebSockets | Mission progress and event updates | Initial choice; unverified |
-| Durable workflows | Temporal | Long-running mission state, retries, recovery | Planned integration; unverified |
-| Specialist reasoning | Bounded agents and deterministic modules | Task-specific research and analysis | Architecture proposal |
-| Simulation | Deterministic synthetic environment | Reproducible first mission | Planned |
-| Lab isolation | Separately isolated environment, technology TBD | Authorized future experiments | Deferred, subject to safety gates |
-| Observability | OpenTelemetry-compatible instrumentation is discussed in research | Traces, metrics, and logs | Proposed; unverified |
+| Area | What the branch contains | Status and qualification |
+|---|---|---|
+| Frontend | React 18.3, TypeScript 5.7, Vite 6; `@xyflow/react` 12.4; Lucide icons | Present in `frontend/package.json`; production build and Playwright E2E are recorded as passing for the Stage 4 code-bearing commit. Recheck the final PR-head run before merge. |
+| Browser tests | Playwright / Chromium | `test:e2e` script and Stage 4 browser workflow exist. The E2E suite uses a disposable SQLite database. |
+| Backend API | FastAPI, Uvicorn, Pydantic Settings | Present in `backend/pyproject.toml` and the application code. |
+| Persistence and migration | SQLAlchemy 2, Alembic, psycopg 3 | Present in the backend manifest and migrations. PostgreSQL 16 migration/API integration checks are in CI. |
+| Local test database | SQLite | Used by the normal API test suite and E2E test setup. It is useful for fast tests but does not substitute for the entire API suite and race/concurrency coverage on PostgreSQL 16. |
+| Authentication and controls | Argon2 password hashing, server-side sessions, HTTP-only session cookie, CSRF cookie/header, workspace authorization | Implemented in the API foundation; production owner provisioning/bootstrap is not present in the reviewed branch. Keep registration disabled in production until a reviewed bootstrap/invitation path exists. |
+| Security and evidence | Synthetic-only registered scenarios; workspace-scoped records; Origo verification history; server-generated JSON/Markdown reports | Stage 4 acceptance notes and tests record these capabilities. This remains a synthetic research/simulation capability, not proof about live systems. |
+| CI | GitHub Actions; Python 3.11/3.12, pytest, Ruff, PostgreSQL 16 service, frontend build and Playwright | Workflows exist under `.github/workflows/`. The normal API suite is SQLite-backed; PostgreSQL has migration and integration coverage but not yet a confirmed full-suite run. |
 
-## Optional or deferred technologies
+## Not implemented or still open
 
-Cytoscape.js, Three.js, Kafka/Redpanda, dedicated graph storage, and additional distributed components should remain optional until concrete workload, visualization, throughput, or graph-query requirements justify them. Do not adopt multiple technologies that solve the same problem without an explicit reason.
+| Technology or capability | Current truth | Tracking decision |
+|---|---|---|
+| NetworkX | Not declared in the reviewed backend dependency manifest; the graph is persisted through application/database models | Do not list it as an adopted dependency unless a concrete need and tested integration are added. |
+| Temporal | Not present in the dependency manifest or verified runtime | OD-004 remains open. For the $0 target, the recommended starting point is a PostgreSQL-backed state machine and lease/queue tables; do not deploy a separate workflow service just because it appears in planning notes. Owner decision is still required. |
+| WebSockets / SSE | No verified transport integration in the reviewed code | OD-013 remains open. Pick the simplest transport only when UI progress requirements need it. |
+| Model provider / agent framework | No provider integration verified | OD-005 and OD-008 remain open. Use deterministic fixtures and mocked model responses for tests. Do not make billable provider calls under the $0 cap. |
+| Dockerfile / container image | No root `Dockerfile` was found at the expected path on this branch | Hosting image build has not been demonstrated. Add and test it only as a separate implementation task. |
+| Render blueprint | No root `render.yaml` was found at the expected path on this branch | Do not describe Render deployment as configured or ready. No deployment was performed. |
+| Single-origin UI + API hosting | The reviewed FastAPI entry point exposes API routes; a single-container frontend serving path was not verified | P0 hosting blocker because session/CSRF behavior requires a verified compatible origin arrangement. |
+| Production owner bootstrap | Not present in the reviewed branch | P0 blocker before public production mode with self-registration disabled. |
+| Frontend lint and unit-test scripts | `frontend/package.json` contains dev, build, preview and E2E scripts; no lint or unit-test script is defined | Add low-cost local/CI tooling before frontend complexity increases. |
+| pip-audit, npm audit, secret scanning | Not verified as enabled end-to-end by the inspected files | Add/enable free repository-native checks, and verify repository security settings; do not claim protection solely from a checklist. |
+| OpenTelemetry, Kafka/Redpanda, graph database, Three.js | Proposed or deferred; not verified as installed or used | Keep deferred until measured requirements justify their cost and complexity. |
 
-The foundational research mentions LangGraph or a custom state machine as orchestration candidates. Later planning specifies Temporal for durable workflow orchestration. Treat this as an evolution in the design direction, not proof that the choice has been integrated. Clarify whether Temporal will own durable mission workflows while NEXARCH handles planning/coordination, and whether a separate agent framework is actually needed.
+## Zero-cost implementation policy
 
-## Decision principles
+1. Use local development, local tests, and the existing GitHub Actions workflows as the primary engineering loop.
+2. Do not create paid cloud resources, paid CI plans, paid domains, commercial model API usage, paid add-ons, backup products, or an always-on worker under the current budget.
+3. Do not attach a payment card to Render or create an AWS account/resource for this project while the $0 cap is active.
+4. A hosted smoke test on a free Render service and free Neon database is optional—not a completion requirement—and may proceed only after free-tier availability, limits, region/data handling, and billing settings are rechecked. If the no-card / no-charge conditions cannot be established, skip the hosted test and record it as blocked by the cost limit.
+5. Use mocked model calls for Stage 6 development and CI unless a provider can be used without charge under terms the owner has reviewed. Do not put keys in frontend code or commit secrets.
+6. Keep Stage 7 lab execution offline and deferred. Do not provision a lab or use a PaaS for lab isolation.
+7. Re-check provider prices and limits at the moment of any proposed hosted test; this document is not a promise that free tiers never change.
 
-- Prefer a small, testable vertical slice over building all infrastructure up front.
-- Choose components based on acceptance criteria, operational capability, and total complexity.
-- Keep policy enforcement and authorization deterministic even when AI proposes actions.
-- Define data ownership, schema migration, backup, restore, and retention before relying on persistence.
-- Define workflow idempotency, retries, cancellation, and recovery before long-running agent tasks.
-- Measure actual need before adding event streaming, graph databases, 3D visualization, or distributed services.
+## Decision references
 
-## Missing operational decisions
+- **OD-004:** workflow runtime remains open; the PostgreSQL-backed state-machine approach is the cost-conscious recommendation, not an owner-approved final selection.
+- **OD-005:** typed role interfaces first; no separate agent framework unless the acceptance criteria justify it.
+- **OD-008:** model provider and model-data policy remain open; mock providers by default for testing.
+- **OD-009:** deployment topology remains open, with a hard $0 spending ceiling. Local + CI is the default; hosted free-tier smoke testing is optional and must not require a card.
+- **OD-013:** event transport remains open.
+- **OD-011:** license, contribution/support commitments, and vulnerability disclosure policy remain owner decisions.
 
-The planning files do not establish verified production choices for cloud provider, deployment topology, secrets manager, identity provider, model provider, model data-retention terms, backup/restore objectives, availability targets, or cost limits. Record these as open decisions rather than inventing defaults.
+## Evidence standard
 
-## Evidence required to mark a technology implemented
-
-A technology should be labelled implemented only after the repository contains the relevant code/configuration and the intended behavior is validated. Dependency declaration alone is not enough to claim an integration is working.
+A technology or capability may be called implemented only when the relevant repository code/configuration exists **and** the intended behavior has verification evidence. A plan, dependency name, deployment table, diagram, or unchecked owner checklist is not implementation evidence. The authoritative task status and exit criteria live in [the implementation tracker](stage4/03_IMPLEMENTATION_TRACKER.md); Stage 4 automated evidence and limits are in [the Stage 4 acceptance record](stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md).
