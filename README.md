@@ -87,7 +87,7 @@ Local evidence for the Stage 2 working tree: 13 API tests pass; Python compilati
 
 ## Stage 3 digital-world and simulation
 
-The Stage 3 branch adds a first executable world-and-simulation slice on top of the Stage 2 backend. It provides workspace-scoped synthetic entities and relationships, versioned SHA-256 baseline snapshots, a fixed authentication-failure scenario and benign control, idempotent simulation run records, provenance-linked evidence, and deterministic fixture consistency checks.
+The Stage 3 branch adds a verified first executable world-and-simulation slice on top of the Stage 2 backend. GitHub Actions passed on commit `04b13f4a3f21e07c242e268fe45ab7396ab4954a`, including Python 3.11/3.12 tests and lint, fresh SQLite migration round-trips, PostgreSQL 16 migration round-trip, and an end-to-end PostgreSQL API smoke test. It provides workspace-scoped synthetic entities and relationships, versioned SHA-256 baseline snapshots, a fixed authentication-failure scenario and benign control, idempotent simulation run records, provenance-linked evidence, and deterministic fixture consistency checks.
 
 - [Stage 3 index and acceptance gate](docs/stage3/00_STAGE3_INDEX.md)
 - API setup and walkthrough: [backend README](backend/README.md)
