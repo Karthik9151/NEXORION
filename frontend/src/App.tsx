@@ -10,7 +10,7 @@ import {
   Background, Controls, MiniMap, ReactFlow, type Edge as FlowEdge, type Node as FlowNode,
 } from "@xyflow/react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { api, type AuthPayload, type Evidence, type Mission, type SimulationRun, type User, type Workspace, type WorldEntity, type WorldRelationship } from "./api";
+import { api, type AuthPayload, type Evidence, type Mission, type Scenario, type SimulationRun, type User, type Verification, type VerificationHistory, type Workspace, type WorldEntity, type WorldRelationship } from "./api";
 
 type Screen = "missions" | "world" | "simulation" | "evidence" | "reports" | "settings";
 type Theme = "obsidian" | "polar";
@@ -25,7 +25,9 @@ const NAV: Array<{ id: Screen; label: string; icon: LucideIcon; group: string }>
   { id: "settings", label: "Settings", icon: Settings2, group: "SYSTEM" },
 ];
 
-const SCENARIOS = [
+type ScenarioCard = Scenario & { icon: LucideIcon };
+
+const SCENARIO_FALLBACKS: ScenarioCard[] = [
   { id: "scenario-auth-failure-v1", name: "Authentication Failure Pattern", category: "IDENTITY", description: "Five synthetic failures followed by a success inside the fixed rule window.", enabled: true, icon: LockKeyhole },
   { id: "scenario-auth-benign-control-v1", name: "Benign Control Sequence", category: "CONTROL", description: "A registered control fixture with repeated failures and no following success.", enabled: true, icon: ShieldCheck },
   { id: "scenario-lateral-movement-planned", name: "Lateral Movement", category: "NETWORK", description: "Scenario catalog placeholder. No executable fixture is registered yet.", enabled: false, icon: GitBranch },
@@ -187,8 +189,13 @@ function App() {
   const [entities, setEntities] = useState<WorldEntity[]>(DEMO_ENTITIES);
   const [relationships, setRelationships] = useState<WorldRelationship[]>(DEMO_RELATIONSHIPS);
   const [runs, setRuns] = useState<SimulationRun[]>(DEMO_RUNS);
+  const [scenarios, setScenarios] = useState<ScenarioCard[]>(SCENARIO_FALLBACKS);
+  const [verificationHistoryByRun, setVerificationHistoryByRun] = useState<Record<string, VerificationHistory>>({});
+  const [verificationBusyRunId, setVerificationBusyRunId] = useState("");
+  const [reportPreview, setReportPreview] = useState<Record<string, unknown> | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [selectedMissionId, setSelectedMissionId] = useState("sample-mission-01");
-  const [selectedScenarioId, setSelectedScenarioId] = useState(SCENARIOS[0].id);
+  const [selectedScenarioId, setSelectedScenarioId] = useState(scenarios[0].id);
   const [selectedEntity, setSelectedEntity] = useState<WorldEntity | null>(DEMO_ENTITIES[1]);
   const [searchText, setSearchText] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
@@ -198,7 +205,7 @@ function App() {
   const [authBusy, setAuthBusy] = useState(false);
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [missionObjective, setMissionObjective] = useState("Investigate a synthetic authentication-failure sequence");
-  const [missionScenario, setMissionScenario] = useState(SCENARIOS[0].id);
+  const [missionScenario, setMissionScenario] = useState(scenarios[0].id);
   const [showEntityModal, setShowEntityModal] = useState(false);
   const [entityName, setEntityName] = useState("Synthetic service");
   const [entityType, setEntityType] = useState("service");
@@ -209,8 +216,8 @@ function App() {
 
   const isSample = demoMode || apiStatus === "sample" || (!user && apiStatus === "offline");
   const selectedMission = missions.find((item) => item.id === selectedMissionId) || missions[0];
-  const selectedScenario = SCENARIOS.find((item) => item.id === selectedScenarioId) || SCENARIOS[0];
-  const registeredScenarios = SCENARIOS.filter((item) => item.enabled);
+  const selectedScenario = scenarios.find((item) => item.id === selectedScenarioId) || scenarios[0];
+  const registeredScenarios = scenarios.filter((item) => item.enabled && (demoMode || Boolean(item.fixture_version)));
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -220,6 +227,8 @@ function App() {
   const refreshWorkspace = useCallback(async (id: string) => {
     if (!id) return;
     try {
+      setVerificationHistoryByRun({});
+      setReportPreview(null);
       const [nextMissions, nextEntities, nextRelationships] = await Promise.all([
         api.missions(id), api.entities(id), api.relationships(id),
       ]);
@@ -258,6 +267,49 @@ function App() {
   }, [refreshWorkspace]);
 
   useEffect(() => {
+    if (!user || demoMode) return;
+    let cancelled = false;
+    api.scenarios().then((catalog) => {
+      if (cancelled) return;
+      const remote = catalog.items.map((item): ScenarioCard => {
+        const fallback = SCENARIO_FALLBACKS.find((candidate) => candidate.id === item.id);
+        const icon = fallback?.icon || FlaskConical;
+        return { ...(fallback || { ...item, icon }), ...item, icon };
+      });
+      const planned = SCENARIO_FALLBACKS.filter((item) =>
+        !item.enabled && !catalog.items.some((remoteItem) => remoteItem.id === item.id)
+      );
+      setScenarios([...remote, ...planned]);
+      setSelectedScenarioId((current) =>
+        catalog.items.some((item) => item.id === current) ? current : (catalog.items[0]?.id || current)
+      );
+    }).catch(() => {
+      if (!cancelled) notify("Registered scenario catalog could not be refreshed; API-backed simulations remain unavailable until the catalog loads.");
+    });
+    return () => { cancelled = true; };
+  }, [user, demoMode, notify]);
+
+  useEffect(() => {
+    if (!user || !workspaceId || demoMode || runs.length === 0) {
+      if (demoMode || !user) setVerificationHistoryByRun({});
+      return;
+    }
+    let cancelled = false;
+    const targetRuns = runs.slice(0, 30);
+    Promise.all(targetRuns.map(async (run) => {
+      try {
+        const history = await api.verificationHistory(workspaceId, run.mission_id, run.id);
+        return [run.id, history] as const;
+      } catch {
+        return [run.id, { items: [], latest: null }] as const;
+      }
+    })).then((entries) => {
+      if (!cancelled) setVerificationHistoryByRun((current) => ({ ...current, ...Object.fromEntries(entries) }));
+    });
+    return () => { cancelled = true; };
+  }, [user, workspaceId, demoMode, runs]);
+
+  useEffect(() => {
     try { localStorage.setItem("nexorion-theme", theme); } catch { /* storage is optional */ }
     document.documentElement.dataset.theme = theme;
   }, [theme]);
@@ -280,9 +332,12 @@ function App() {
   });
 
   const missionRuns = selectedMission ? runs.filter((run) => run.mission_id === selectedMission.id) : [];
+  const verificationTargetRun = missionRuns[0];
+  const latestVerification = verificationTargetRun ? verificationHistoryByRun[verificationTargetRun.id]?.latest || null : null;
+  const verificationStatusForRun = (run: SimulationRun) => verificationHistoryByRun[run.id]?.latest?.status || "Not requested";
   const allEvidence = runs.flatMap((run) => run.evidence.map((item) => ({ ...item, mission_id: run.mission_id, run_id: run.id, outcome: run.outcome })));
   const visibleEvidence = allEvidence.filter((item) => evidenceFilter === "all" || item.evidence_type.toLowerCase().includes(evidenceFilter));
-  const verifiedRuns = runs.filter((run) => ((run.result.verification as { status?: string } | undefined)?.status || "") === "verified").length;
+  const verifiedRuns = Object.values(verificationHistoryByRun).filter((history) => history.latest?.status === "verified").length;
   const activeCount = missions.filter((mission) => ["active", "running", "verifying"].includes(mission.state)).length;
   const completedCount = missions.filter((mission) => ["completed", "succeeded"].includes(mission.state)).length;
 
@@ -355,6 +410,9 @@ function App() {
     setEntities(DEMO_ENTITIES);
     setRelationships(DEMO_RELATIONSHIPS);
     setRuns(DEMO_RUNS);
+    setScenarios(SCENARIO_FALLBACKS);
+    setVerificationHistoryByRun({});
+    setReportPreview(null);
     setSelectedMissionId(DEMO_MISSIONS[0].id);
     setScreen("missions");
   }
@@ -365,6 +423,8 @@ function App() {
     setDemoMode(false);
     setWorkspaces([]);
     setWorkspaceId("");
+    setVerificationHistoryByRun({});
+    setReportPreview(null);
     setApiStatus("offline");
     notify("Signed out of the workspace.");
   }
@@ -440,8 +500,8 @@ function App() {
   }
 
   async function runScenario() {
-    const selectedScenario = SCENARIOS.find((item) => item.id === selectedScenarioId) || SCENARIOS[0];
-    if (!selectedScenario.enabled) {
+    const selectedScenario = scenarios.find((item) => item.id === selectedScenarioId) || scenarios[0];
+    if (!selectedScenario.enabled || (!demoMode && !selectedScenario.fixture_version)) {
       notify("This scenario is a catalog placeholder; its registered fixture is not implemented.");
       return;
     }
@@ -472,10 +532,8 @@ function App() {
               ? "A synthetic success followed at least five matching failures inside the configured window."
               : "Repeated synthetic authentication failures were recorded without the required success-after-threshold pattern.",
             source_class: "synthetic",
-            verification: {
-              status: "verified",
+            fixture_consistency: {
               scope: "sample UI fixture only",
-              checks: [{ check: "registered_fixture_only", passed: true }, { check: "synthetic_source_label", passed: true }, { check: "fixture_event_count", passed: true }, { check: "expected_fixture_outcome", passed: true }, { check: "evidence_references_resolve", passed: true }],
               limitations: ["Sample data only; not generated by the backend."],
             },
           },
@@ -503,53 +561,73 @@ function App() {
     }
   }
 
-  function exportReport(run: SimulationRun, format: "json" | "md") {
-    const report = {
-      platform: "NEXORION",
-      environment: "SYNTHETIC (ISOLATED)",
-      report_scope: "Registered synthetic fixture and bounded deterministic checks only",
-      mission_id: run.mission_id,
-      run_id: run.id,
-      scenario_id: run.scenario_id,
-      outcome: run.outcome,
-      verification: run.result.verification || { status: "not supplied" },
-      evidence: run.evidence,
-      result: run.result,
-      input_digest: run.input_digest,
-      output_digest: run.output_digest,
-      limitations: ["Synthetic data only.", "This output does not describe a real environment.", "Fixture consistency checks are not a full independent verifier."],
-    };
-    let content = "";
-    let filename = "";
-    if (format === "json") {
-      content = JSON.stringify(report, null, 2);
-      filename = "nexorion-report-" + run.id + ".json";
-    } else {
-      content = [
-        "# NEXORION Synthetic Mission Report", "",
-        "- Environment: SYNTHETIC (ISOLATED)",
-        "- Mission: " + run.mission_id,
-        "- Run: " + run.id,
-        "- Scenario: " + run.scenario_id,
-        "- Outcome: " + run.outcome,
-        "- Verification: " + String((run.result.verification as { status?: string } | undefined)?.status || "not supplied"),
-        "", "## Summary", "", String(run.result.summary || "No summary was returned."),
-        "", "## Evidence", "",
-        ...run.evidence.map((item) => "- " + item.evidence_type + " · " + item.source_ref + " · SHA-256 " + item.content_digest),
-        "", "## Limitations", "",
-        "- Synthetic fixture only; not a real-world observation.",
-        "- The registered fixture verifier checks deterministic consistency, not a real system.",
-      ].join("\n");
-      filename = "nexorion-report-" + run.id + ".md";
+  async function requestVerification(run: SimulationRun) {
+    if (demoMode || !user || !workspaceId || apiStatus !== "online") {
+      notify("Origo verification requires an authenticated workspace and persisted API data.");
+      return;
     }
-    const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    notify("Report export prepared as " + format.toUpperCase() + ".");
+    setVerificationBusyRunId(run.id);
+    try {
+      const idempotencyKey = "origo-ui-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+      const attempt = await api.verifyRun(workspaceId, run.mission_id, run.id, idempotencyKey);
+      const history = await api.verificationHistory(workspaceId, run.mission_id, run.id)
+        .catch(() => ({ items: [attempt], latest: attempt }));
+      setVerificationHistoryByRun((current) => ({ ...current, [run.id]: history }));
+      notify("Origo verification recorded: " + attempt.status + ".");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Origo verification could not be completed.";
+      if (/AUTHENTICATION_REQUIRED|SESSION_INVALID/.test(message)) {
+        setUser(null);
+        setApiStatus("offline");
+        notify("Your session has expired. Sign in again to continue.");
+      } else {
+        notify(message);
+      }
+    } finally {
+      setVerificationBusyRunId("");
+    }
+  }
+
+  async function generateMissionReport() {
+    if (demoMode || !user || !workspaceId || !selectedMission) {
+      notify("Server-generated reports require an authenticated workspace; sample data is not persisted.");
+      return;
+    }
+    setReportLoading(true);
+    try {
+      const report = await api.missionReport(workspaceId, selectedMission.id);
+      setReportPreview(report);
+      notify("Research report generated from persisted mission, run, evidence and verification records.");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Report generation failed.");
+    } finally {
+      setReportLoading(false);
+    }
+  }
+
+  async function exportReport(run: SimulationRun, format: "json" | "md") {
+    if (demoMode || !user || !workspaceId) {
+      notify("Server-generated exports are unavailable for sample-only data.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const content = format === "json"
+        ? JSON.stringify(await api.missionReport(workspaceId, run.mission_id), null, 2)
+        : await api.missionReportMarkdown(workspaceId, run.mission_id);
+      const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "nexorion-mission-" + run.mission_id + "." + (format === "json" ? "json" : "md");
+      anchor.click();
+      URL.revokeObjectURL(url);
+      notify("Server-generated mission report exported as " + format.toUpperCase() + ".");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Report export failed.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const changeScreen = (next: Screen) => {
@@ -644,7 +722,7 @@ function App() {
             </div>
             <div className="heading-actions">
               <button className="icon-button" aria-label="Toggle theme" title="Toggle theme" onClick={() => setTheme(theme === "obsidian" ? "polar" : "obsidian")}>{theme === "obsidian" ? <Sun size={17} /> : <Moon size={17} />}</button>
-              <button className="button button-primary" onClick={() => { setMissionObjective("Investigate a synthetic authentication-failure sequence"); setMissionScenario(SCENARIOS[0].id); setShowMissionModal(true); }}><Plus size={16} /> New mission</button>
+              <button className="button button-primary" onClick={() => { setMissionObjective("Investigate a synthetic authentication-failure sequence"); setMissionScenario(scenarios[0].id); setShowMissionModal(true); }}><Plus size={16} /> New mission</button>
             </div>
           </div>
 
@@ -755,7 +833,7 @@ function App() {
               <div className="simulation-grid">
                 <section className="panel scenario-panel">
                   <div className="panel-heading"><div><div className="section-kicker">SCENARIO CATALOG</div><h2>Available fixtures</h2><p>Select a registered scenario</p></div><span className="count-badge">{registeredScenarios.length} active</span></div>
-                  <div className="scenario-list">{SCENARIOS.map((scenario) => {
+                  <div className="scenario-list">{scenarios.map((scenario) => {
                     const Icon = scenario.icon;
                     return <button key={scenario.id} className={"scenario-card " + (selectedScenarioId === scenario.id ? "scenario-selected" : "") + (!scenario.enabled ? " scenario-disabled" : "")} onClick={() => setSelectedScenarioId(scenario.id)}>
                       <div className="scenario-icon"><Icon size={17} /></div><div className="scenario-copy"><strong>{scenario.name}</strong><p>{scenario.description}</p><div className="scenario-meta"><span className="type-pill">{scenario.category}</span><StatusTag value={scenario.enabled ? "Registered" : "Planned"} /></div></div><ChevronRight size={15} className="scenario-chevron" />
@@ -764,7 +842,7 @@ function App() {
                   <div className="scenario-foot"><Shield size={15} /><span>Unregistered scenarios are displayed as roadmap placeholders only.</span></div>
                 </section>
                 <section className="panel scenario-detail-panel">
-                  <div className="panel-heading"><div><div className="section-kicker">SCENARIO DETAILS</div><h2>{SCENARIOS.find((item) => item.id === selectedScenarioId)?.name}</h2><p>{selectedScenarioId}</p></div><StatusTag value={selectedScenario?.enabled ? "Registered" : "Planned"} /></div>
+                  <div className="panel-heading"><div><div className="section-kicker">SCENARIO DETAILS</div><h2>{scenarios.find((item) => item.id === selectedScenarioId)?.name}</h2><p>{selectedScenarioId}</p></div><StatusTag value={selectedScenario?.enabled ? "Registered" : "Planned"} /></div>
                   <div className="scenario-detail-copy">{selectedScenario?.description}</div>
                   <div className="detail-callout"><div className="callout-icon"><LockKeyhole size={16} /></div><div><strong>Execution boundary</strong><p>Fixture data is inert. The simulator does not connect to the named identities or external systems, and its teaching thresholds are not calibrated for operational detection.</p></div></div>
                   <div className="section-kicker prerequisites-heading">PREREQUISITES</div>
@@ -779,14 +857,14 @@ function App() {
                 </section>
               </div>
               <section className="panel recent-runs-panel"><div className="panel-heading compact"><div><div className="section-kicker">EXECUTION HISTORY</div><h2>Recent runs</h2></div><button className="text-button" onClick={() => setScreen("reports")}>Open reports <ChevronRight size={14} /></button></div>
-                <div className="table-wrap"><table className="data-table"><thead><tr><th>RUN ID</th><th>SCENARIO</th><th>OUTCOME</th><th>VERIFICATION</th><th>COMPLETED</th><th /></tr></thead><tbody>{runs.slice(0, 5).map((run) => <tr key={run.id}><td className="mono">{run.id.slice(0, 18)}</td><td>{SCENARIOS.find((item) => item.id === run.scenario_id)?.name || run.scenario_id}</td><td><StatusTag value={run.outcome} /></td><td><StatusTag value={String((run.result.verification as { status?: string } | undefined)?.status || "Inconclusive")} /></td><td>{formatDate(run.completed_at)}</td><td><button className="icon-button tiny" aria-label="Inspect run evidence" onClick={() => setScreen("evidence")}><ChevronRight size={15} /></button></td></tr>)}{runs.length === 0 && <tr><td colSpan={6}><div className="empty-state small-empty">No runs recorded in this workspace.</div></td></tr>}</tbody></table></div>
+                <div className="table-wrap"><table className="data-table"><thead><tr><th>RUN ID</th><th>SCENARIO</th><th>OUTCOME</th><th>VERIFICATION</th><th>COMPLETED</th><th /></tr></thead><tbody>{runs.slice(0, 5).map((run) => <tr key={run.id}><td className="mono">{run.id.slice(0, 18)}</td><td>{scenarios.find((item) => item.id === run.scenario_id)?.name || run.scenario_id}</td><td><StatusTag value={run.outcome} /></td><td><StatusTag value={verificationStatusForRun(run)} /></td><td>{formatDate(run.completed_at)}</td><td><button className="icon-button tiny" aria-label="Inspect run evidence" onClick={() => setScreen("evidence")}><ChevronRight size={15} /></button></td></tr>)}{runs.length === 0 && <tr><td colSpan={6}><div className="empty-state small-empty">No runs recorded in this workspace.</div></td></tr>}</tbody></table></div>
               </section>
             </section>
           )}
 
           {screen === "evidence" && (
             <section className="screen-stack">
-              <div className="evidence-banner"><div className="evidence-banner-icon"><Fingerprint size={22} /></div><div><div className="section-kicker">PROVENANCE FIRST</div><h2>Evidence & bounded verification</h2><p>Inspect content digests, fixture sources, linked runs, and deterministic consistency checks.</p></div><div className="verification-summary"><span>{verifiedRuns.toString().padStart(2, "0")}</span><small>Verified fixture runs</small></div></div>
+              <div className="evidence-banner"><div className="evidence-banner-icon"><Fingerprint size={22} /></div><div><div className="section-kicker">PROVENANCE FIRST</div><h2>Evidence & Origo verification</h2><p>Inspect persisted evidence and independently evaluate its integrity, provenance and synthetic event outcome.</p></div><div className="verification-summary"><span>{verifiedRuns.toString().padStart(2, "0")}</span><small>Origo-verified runs</small></div></div>
               <div className="evidence-metrics"><div className="mini-stat"><FileCheck2 size={16} /><span>Evidence records</span><strong>{allEvidence.length}</strong></div><div className="mini-stat"><Fingerprint size={16} /><span>Digest attached</span><strong>{allEvidence.filter((item) => item.content_digest).length}</strong></div><div className="mini-stat"><ShieldCheck size={16} /><span>Source class</span><strong>synthetic</strong></div><div className="mini-stat"><AlertTriangle size={16} /><span>Integrity caveats</span><strong>Visible</strong></div></div>
               <section className="panel evidence-table-panel">
                 <div className="panel-heading"><div><div className="section-kicker">EVIDENCE REGISTER</div><h2>Collected artifacts</h2><p>Records returned with registered synthetic simulation runs</p></div><div className="table-actions"><label className="select-field"><Filter size={14} /><select value={evidenceFilter} onChange={(event) => setEvidenceFilter(event.target.value)}><option value="all">All types</option><option value="auth">Authentication</option><option value="synthetic">Synthetic</option><option value="log">Log</option></select></label><button className="button button-secondary button-small" onClick={() => setScreen("reports")}><Download size={14} /> Export</button></div></div>
@@ -795,25 +873,35 @@ function App() {
               </section>
               <div className="content-grid evidence-detail-grid">
                 <section className="panel">
-                  <div className="panel-heading"><div><div className="section-kicker">VERIFICATION TRACE</div><h2>Bounded fixture checks</h2><p>Illustrative structure from the registered verifier</p></div><span className="panel-icon"><BadgeCheck size={18} /></span></div>
-                  {(missionRuns[0]?.result.verification as { checks?: Array<{ check: string; passed: boolean }>; status?: string; limitations?: string[] } | undefined)?.checks?.map((check) => <div className="check-row trace-row" key={check.check}><span className={check.passed ? "trace-check passed" : "trace-check failed"}>{check.passed ? <Check size={12} /> : <X size={12} />}</span><span>{check.check.replace(/_/g, " ")}</span><StatusTag value={check.passed ? "Passed" : "Failed"} /></div>) || <div className="empty-state small-empty">Select a mission with a run to inspect checks.</div>}
+                  <div className="panel-heading"><div><div className="section-kicker">VERIFICATION TRACE</div><h2>Independent Origo verification</h2><p>Status reflects a persisted verification attempt, not simulation completion.</p></div><span className="panel-icon"><BadgeCheck size={18} /></span></div>
+                  <div className="panel-heading-actions"><button className="button button-primary button-small" disabled={!verificationTargetRun || demoMode || apiStatus !== "online" || verificationBusyRunId === verificationTargetRun?.id} onClick={() => verificationTargetRun && requestVerification(verificationTargetRun)}>{verificationBusyRunId === verificationTargetRun?.id ? "Verifying…" : "Verify latest run with Origo"} <ShieldCheck size={14} /></button></div>
+                  {verificationTargetRun ? <>
+                    <div className="check-row trace-row"><span>Latest run</span><code>{verificationTargetRun.id.slice(0, 18)}</code><StatusTag value={verificationStatusForRun(verificationTargetRun)} /></div>
+                    {latestVerification?.created_at && <div className="check-row trace-row"><span>Last attempt</span><span>{formatDate(latestVerification.created_at)}</span><small>{latestVerification.verifier_version}</small></div>}
+                    {latestVerification?.checks?.map((check) => <div className="check-row trace-row" key={check.check}><span className={check.passed === true ? "trace-check passed" : check.passed === false ? "trace-check failed" : "trace-check"}>{check.passed === true ? <Check size={12} /> : check.passed === false ? <X size={12} /> : <Clock3 size={12} />}</span><span>{check.check.replace(/_/g, " ")}</span><StatusTag value={check.passed === true ? "Passed" : check.passed === false ? "Failed" : "Unknown"} /></div>)}
+                    {latestVerification?.reasons?.map((reason, index) => <p className="body-copy" key={index}>{reason}</p>)}
+                    {latestVerification?.discrepancies?.map((discrepancy, index) => <div className="warning-notice" key={index}><AlertTriangle size={14} /><span>Discrepancy: {JSON.stringify(discrepancy)}</span></div>)}
+                    {!latestVerification && <div className="empty-state small-empty">Verification has not been requested for this run. Simulation completion alone is not verification.</div>}
+                    {(verificationHistoryByRun[verificationTargetRun.id]?.items.length || 0) > 1 && <div className="panel-foot"><span>Previous attempts: {verificationHistoryByRun[verificationTargetRun.id].items.length}</span></div>}
+                  </> : <div className="empty-state small-empty">Select a mission with a persisted run before requesting verification.</div>}
                 </section>
-                <section className="panel limitations-panel"><div className="panel-heading"><div><div className="section-kicker">INTERPRETATION BOUNDARY</div><h2>What this verifies</h2></div><span className="panel-icon warning-icon"><AlertTriangle size={18} /></span></div><p className="body-copy">The current API compares a registered fixture with a deterministic result and checks that referenced evidence IDs resolve. It does not independently validate a live system or external telemetry.</p><div className="limitation-list"><div><CheckCircle2 size={15} /><span>Registered fixture and schema expectations</span></div><div><CheckCircle2 size={15} /><span>Event-count and evidence-reference consistency</span></div><div><AlertTriangle size={15} /><span>Not full independent Origo verification</span></div><div><AlertTriangle size={15} /><span>No claims about real-world compromise</span></div></div></section>
+                <section className="panel limitations-panel"><div className="panel-heading"><div><div className="section-kicker">INTERPRETATION BOUNDARY</div><h2>What this verifies</h2></div><span className="panel-icon warning-icon"><AlertTriangle size={18} /></span></div><p className="body-copy">Origo evaluates persisted synthetic events independently of the simulation fixture function. Missing or legacy evidence stays inconclusive; conflicting claims are disputed, and integrity failures are failed.</p><div className="limitation-list"><div><CheckCircle2 size={15} /><span>Persisted fingerprints and event references</span></div><div><CheckCircle2 size={15} /><span>Scenario and verifier version compatibility</span></div><div><AlertTriangle size={15} /><span>No external telemetry or live-system claims</span></div><div><AlertTriangle size={15} /><span>Simulation success does not imply verification</span></div></div></section>
               </div>
             </section>
           )}
 
           {screen === "reports" && (
             <section className="screen-stack">
-              <div className="reports-hero"><div><div className="section-kicker">RESEARCH OUTPUTS</div><h2>Reports & reproducibility</h2><p>Summaries are derived from recorded simulation runs and their attached evidence.</p></div><div className="reports-hero-mark"><FileText size={25} /></div></div>
+              <div className="reports-hero"><div><div className="section-kicker">RESEARCH OUTPUTS</div><h2>Reports & reproducibility</h2><p>Summaries are generated by the API from persisted mission, baseline, run, evidence and Origo records.</p></div><button className="button button-primary" disabled={!selectedMission || demoMode || apiStatus !== "online" || reportLoading} onClick={generateMissionReport}>{reportLoading ? "Generating…" : "Generate mission report"} <FileText size={15} /></button></div>
+              {reportPreview && <section className="panel"><div className="panel-heading"><div><div className="section-kicker">SERVER REPORT PREVIEW</div><h2>Persisted mission report</h2><p>Schema {String(reportPreview.report_schema_version || "—")} · Generated {String(reportPreview.report_generated_at || "—")}</p></div><button className="text-button" onClick={() => setReportPreview(null)}>Dismiss <X size={13} /></button></div><div className="settings-info-grid"><div><span>Mission</span><strong>{String((reportPreview.scope as Record<string, unknown> | undefined)?.mission_id || "—")}</strong></div><div><span>Runs</span><strong>{Array.isArray(reportPreview.runs) ? reportPreview.runs.length : 0}</strong></div><div><span>Evidence records</span><strong>{Array.isArray(reportPreview.evidence) ? reportPreview.evidence.length : 0}</strong></div><div><span>Verification attempts</span><strong>{Array.isArray(reportPreview.verification_history) ? reportPreview.verification_history.length : 0}</strong></div></div><pre className="report-preview-code">{JSON.stringify(reportPreview, null, 2)}</pre></section>}
               <div className="report-card-grid">
                 <div className="report-type-card"><div className="report-type-top"><span className="report-file-icon blue"><FileText size={18} /></span><StatusTag value="Available" /></div><h3>Mission Summary</h3><p>Objectives, mission state, scope, and execution outcome.</p><div className="report-type-foot"><span>{missions.length} mission records</span><button className="text-button" onClick={() => setScreen("missions")}>Review <ChevronRight size={13} /></button></div></div>
                 <div className="report-type-card"><div className="report-type-top"><span className="report-file-icon amber"><ShieldAlert size={18} /></span><StatusTag value="Bounded" /></div><h3>Security Findings</h3><p>Registered fixture outcome and the applicable limitations.</p><div className="report-type-foot"><span>{runs.length} run records</span><button className="text-button" onClick={() => setScreen("simulation")}>Review <ChevronRight size={13} /></button></div></div>
                 <div className="report-type-card"><div className="report-type-top"><span className="report-file-icon green"><BadgeCheck size={18} /></span><StatusTag value="Evidence-linked" /></div><h3>Verification Trace</h3><p>Fixture-check statuses and linked evidence digests.</p><div className="report-type-foot"><span>{allEvidence.length} evidence records</span><button className="text-button" onClick={() => setScreen("evidence")}>Review <ChevronRight size={13} /></button></div></div>
               </div>
               <section className="panel reports-table-panel"><div className="panel-heading"><div><div className="section-kicker">RECENT REPORTABLE RUNS</div><h2>Run register</h2><p>Export each run record in Markdown or JSON</p></div><span className="count-badge">{runs.length} runs</span></div>
-                <div className="table-wrap"><table className="data-table"><thead><tr><th>MISSION / RUN</th><th>SCENARIO</th><th>OUTCOME</th><th>VERIFICATION</th><th>GENERATED</th><th>EXPORT</th></tr></thead><tbody>{runs.map((run) => <tr key={run.id}><td><div className="report-name-cell"><span className="report-file-icon blue"><FileText size={15} /></span><span><strong>{missions.find((mission) => mission.id === run.mission_id)?.objective || run.mission_id}</strong><small className="mono">{run.id}</small></span></div></td><td>{SCENARIOS.find((item) => item.id === run.scenario_id)?.name || run.scenario_id}</td><td><StatusTag value={run.outcome} /></td><td><StatusTag value={String((run.result.verification as { status?: string } | undefined)?.status || "Inconclusive")} /></td><td>{formatDate(run.completed_at)}</td><td><div className="export-actions"><button className="icon-button tiny" title="Export Markdown" aria-label="Export Markdown" onClick={() => exportReport(run, "md")}><FileText size={15} /></button><button className="icon-button tiny" title="Export JSON" aria-label="Export JSON" onClick={() => exportReport(run, "json")}><FileJson size={15} /></button></div></td></tr>)}{runs.length === 0 && <tr><td colSpan={6}><div className="empty-state"><FileText size={23} /><strong>No reports generated</strong><span>Complete a registered fixture run to create an exportable report.</span><button className="button button-secondary button-small" onClick={() => setScreen("simulation")}>Go to Simulation Lab</button></div></td></tr>}</tbody></table></div>
-                <div className="panel-foot"><span>Exports are generated in the browser from the selected run record.</span><span className="foot-right"><Download size={13} /> Markdown · JSON</span></div>
+                <div className="table-wrap"><table className="data-table"><thead><tr><th>MISSION / RUN</th><th>SCENARIO</th><th>OUTCOME</th><th>VERIFICATION</th><th>GENERATED</th><th>EXPORT</th></tr></thead><tbody>{runs.map((run) => <tr key={run.id}><td><div className="report-name-cell"><span className="report-file-icon blue"><FileText size={15} /></span><span><strong>{missions.find((mission) => mission.id === run.mission_id)?.objective || run.mission_id}</strong><small className="mono">{run.id}</small></span></div></td><td>{scenarios.find((item) => item.id === run.scenario_id)?.name || run.scenario_id}</td><td><StatusTag value={run.outcome} /></td><td><StatusTag value={verificationStatusForRun(run)} /></td><td>{formatDate(run.completed_at)}</td><td><div className="export-actions"><button className="icon-button tiny" title="Export Markdown" aria-label="Export Markdown" onClick={() => exportReport(run, "md")}><FileText size={15} /></button><button className="icon-button tiny" title="Export JSON" aria-label="Export JSON" onClick={() => exportReport(run, "json")}><FileJson size={15} /></button></div></td></tr>)}{runs.length === 0 && <tr><td colSpan={6}><div className="empty-state"><FileText size={23} /><strong>No reports generated</strong><span>Complete a registered fixture run to create an exportable report.</span><button className="button button-secondary button-small" onClick={() => setScreen("simulation")}>Go to Simulation Lab</button></div></td></tr>}</tbody></table></div>
+                <div className="panel-foot"><span>Exports are returned by the API from persisted workspace-authorized records.</span><span className="foot-right"><Download size={13} /> Markdown · JSON</span></div>
               </section>
               <div className="report-disclaimer"><Shield size={15} /><span>Reports preserve synthetic provenance and disclose limitations. A passed fixture check is not a certification of a real environment.</span></div>
             </section>
@@ -830,7 +918,7 @@ function App() {
               </section>
               <section className="panel connection-panel"><div className="panel-heading"><div><div className="section-kicker">SERVICE CONNECTIVITY</div><h2>API connection</h2><p>The frontend uses the Vite proxy for local development by default.</p></div><span className="panel-icon"><Globe2 size={18} /></span></div>
                 <div className="connection-row"><div className={"connection-symbol " + (apiStatus === "online" ? "is-online" : "")}><Activity size={18} /></div><div className="connection-copy"><strong>{apiStatus === "online" ? "API reachable" : apiStatus === "sample" ? "Sample environment active" : "API unavailable or not authenticated"}</strong><small>{apiStatus === "online" ? "Authenticated session and workspace endpoints responded." : "Local default: /api → http://localhost:8000. Set VITE_API_BASE_URL for a deployed frontend."}</small></div><button className="button button-secondary button-small" onClick={() => user && workspaceId ? refreshWorkspace(workspaceId) : notify("Sign in to test the authenticated workspace connection.")}><RefreshCw size={14} /> Test connection</button></div>
-                <div className="connection-notice"><AlertTriangle size={15} /><span>Cross-origin deployments must allow the frontend origin in the API's CORS policy and preserve cookie/CSRF protections. Do not place secrets in VITE_ variables.</span></div>
+                <div className="connection-notice"><AlertTriangle size={15} /><span>Set CORS_ALLOWED_ORIGINS to exact frontend origins on the backend. Credentialed requests are allow-listed; wildcard CORS and frontend secrets are not supported.</span></div>
               </section>
               <section className="panel safety-settings"><div className="panel-heading"><div><div className="section-kicker">GUARDRAILS</div><h2>Security context</h2></div><span className="panel-icon"><ShieldCheck size={18} /></span></div><div className="safety-setting-row"><div><strong>Environment banner</strong><small>Persistent synthetic / isolated context across every workspace screen.</small></div><StatusTag value="Enforced" /></div><div className="safety-setting-row"><div><strong>External execution</strong><small>Network scanning, shell commands, real credentials, and live mutation are not exposed by this interface.</small></div><StatusTag value="Unavailable" /></div><div className="safety-setting-row"><div><strong>Evidence interpretation</strong><small>Fixture checks remain separate from claims about real-world behavior.</small></div><StatusTag value="Bounded" /></div></section>
             </section>
