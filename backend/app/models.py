@@ -95,6 +95,8 @@ class Mission(Base):
         default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
         default=utcnow, onupdate=utcnow)
+    terminal_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completion_reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class AuditEvent(Base):
@@ -281,3 +283,7 @@ class OrigoVerification(Base):
     idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
         default=utcnow)
+
+
+# Register Stage 5 tables with shared SQLAlchemy metadata for Alembic.
+import app.stage5_models  # noqa: E402, F401
