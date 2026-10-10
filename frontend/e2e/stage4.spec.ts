@@ -6,18 +6,18 @@ const password = "Nexorion-E2E-Password-2026";
 
 async function registerWorkspace(page: Page, email: string) {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Welcome back", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.getByLabel("Workspace name").fill("Stage 4 E2E Workspace");
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Create workspace", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Mission Center" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mission Center", exact: true })).toBeVisible();
 }
 
 async function addEntity(page: Page, name: string) {
   await page.getByRole("button", { name: "Digital World", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Digital World Explorer" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Digital World Explorer", exact: true })).toBeVisible();
   await expect(page.getByText("Primary Only Entity", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Add entity", exact: true }).first().click();
   await page.getByLabel("Entity name").fill(name);
@@ -54,7 +54,7 @@ test("registration, workspace isolation, graph, simulation, verification, report
   const seedScript = fileURLToPath(new URL("./seed_second_workspace.py", import.meta.url));
   execFileSync("python", [seedScript, email], { stdio: "pipe", env: process.env });
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Mission Center" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mission Center", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
 
   const switcher = page.getByLabel("Active workspace");
@@ -78,7 +78,7 @@ test("registration, workspace isolation, graph, simulation, verification, report
   await page.getByLabel("Mission objective").fill("Validate Stage 4 end-to-end acceptance workflow");
   await page.getByLabel("Registered scenario").selectOption("scenario-auth-failure-v1");
   await page.locator(".modal-card").getByRole("button", { name: "Create mission", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Simulation Lab" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Simulation Lab", exact: true })).toBeVisible();
 
   const simulationResponse = page.waitForResponse((response) =>
     response.url().includes("/v1/missions/") &&
@@ -93,7 +93,7 @@ test("registration, workspace isolation, graph, simulation, verification, report
   );
   await page.getByRole("button", { name: /Run synthetic simulation/ }).click();
   await simulationResponse;
-  await expect(page.getByRole("heading", { name: "Evidence & Origo Verification" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Evidence & Origo Verification", exact: true })).toBeVisible();
   await historyResponse;
 
   // Verification is a distinct persisted API operation, not a simulation label.
@@ -111,14 +111,14 @@ test("registration, workspace isolation, graph, simulation, verification, report
   );
   await page.getByRole("button", { name: "Generate mission report", exact: true }).click();
   await reportResponse;
-  await expect(page.getByRole("heading", { name: "Persisted mission report" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Persisted mission report", exact: true })).toBeVisible();
 
   // Responsive navigation must remain available at a narrow mobile viewport.
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
   await expect(mobileNavigation).toBeVisible();
   await mobileNavigation.getByRole("button", { name: "World", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Digital World Explorer" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Digital World Explorer", exact: true })).toBeVisible();
   const hasHorizontalOverflow = await page.evaluate(() =>
     document.documentElement.scrollWidth > window.innerWidth
   );
