@@ -38,6 +38,11 @@ target-version = "py311"
 select = ["E", "F", "I", "B"]
 ignore = ["B008"]
 
+[tool.ruff.lint.per-file-ignores]
+# Keep the already-applied Stage 5 schema migration immutable; style-only edits
+# belong in a new migration or application code, not migration history.
+"alembic/versions/0004_stage5_governance_jobs.py" = ["E501", "I001"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
