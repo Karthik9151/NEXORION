@@ -1,6 +1,7 @@
 """Authorized, idempotent execution of fixed synthetic scenarios only."""
 
 import re
+import time
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 from sqlalchemy import select
@@ -9,14 +10,11 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_current_user, get_db, require_csrf, require_workspace_membership
 from app.errors import ApiError
 from app.models import (
-    AuditEvent,
     EvidenceRecord,
     Mission,
     SimulationRun,
     User,
     WorldSnapshot,
-    new_id,
-    utcnow,
 )
 from app.schemas import (
     EvidencePublic,
@@ -24,16 +22,12 @@ from app.schemas import (
     SimulationRunPublic,
 )
 from app.services.job_leases import claim_next_job
+from app.services.synthetic_worker import execute_claimed_job
 from app.services.lifecycle import transition_mission
 from app.simulation import (
-    LIMITATIONS,
-    RULE_SET_VERSION,
     SCENARIO_REGISTRY,
-    SIMULATOR_VERSION,
     digest,
-    evaluate_fixture,
     get_fixture,
-    verify_fixture_result,
 )
 from app.stage5_models import MissionJob, MissionJobAttempt
 
@@ -93,25 +87,6 @@ def _require_mission(db: Session, workspace_id: str, mission_id: str) -> Mission
     if mission is None:
         raise ApiError(404, "MISSION_NOT_FOUND", "The requested mission was not found.")
     return mission
-
-
-def _audit_transition(
-    request: Request,
-    user: User,
-    mission: Mission,
-    old_state: str,
-    new_state: str,
-) -> AuditEvent:
-    return AuditEvent(
-        actor_id=user.id,
-        workspace_id=mission.workspace_id,
-        action="mission.state_transition",
-        resource_type="mission",
-        resource_id=mission.id,
-        decision="allow",
-        reason=f"{old_state}_to_{new_state}_synthetic_run",
-        request_id=request.state.request_id,
-    )
 
 
 @router.post(
@@ -191,151 +166,70 @@ def simulate_mission(
             "The stored baseline digest did not match its snapshot; execution was blocked.",
         )
 
-    if mission.state != "queued":
-        raise ApiError(
-            409,
-            "DURABLE_JOB_REQUIRED",
-            "Direct simulation is disabled. Queue a planned mission with a current approval first.",
-        )
+    # The durable queue is authoritative. A production in-process worker may
+    # have claimed the job before this compatibility endpoint is called.
     job = db.scalar(select(MissionJob).where(
         MissionJob.workspace_id == workspace_id,
         MissionJob.mission_id == mission.id,
         MissionJob.idempotency_key == idempotency_key,
         MissionJob.scenario_id == payload.scenario_id,
-        MissionJob.status == "queued",
     ))
     if job is None:
         raise ApiError(409, "DURABLE_JOB_REQUIRED",
-            "No matching queued job exists for this scenario and idempotency key.")
-    claimed_job = claim_next_job(
-        db, worker_id=f"synthetic-api-worker:{user.id}", lease_seconds=60, job_id=job.id,
-    )
-    if claimed_job is None:
-        raise ApiError(409, "JOB_CLAIM_BLOCKED",
-            "The job failed execution-boundary revalidation and requires review.")
-    # Commit the lease and running state before work begins so recovery can observe it.
-    # If the process dies during deterministic evaluation, the job remains running
-    # until reconciliation marks the outcome uncertain; it is never silently replayed.
-    db.commit()
-    db.refresh(mission)
-    db.refresh(claimed_job)
-    started_at = utcnow()
-    analysis = evaluate_fixture(payload.scenario_id, fixture)
-    # This bounded fixture consistency check is not an Origo verification attempt.
-    fixture_consistency = verify_fixture_result(payload.scenario_id, fixture, analysis)
-    result = {
-        **analysis,
-        "fixture_consistency": fixture_consistency,
-        "simulator_version": SIMULATOR_VERSION,
-        "capabilities_used": ["read_registered_synthetic_fixture",
-            "deterministic_rule_evaluation", "record_synthetic_evidence"],
-        "capabilities_not_available": ["external_network", "host_commands",
-            "real_credentials", "live_system_mutation"],
-    }
-    input_digest = digest(
-        {
-            "scenario_id": payload.scenario_id,
-            "fixture_version": fixture["fixture_version"],
-            "rule_set_version": RULE_SET_VERSION,
-            "events": fixture["events"],
-        }
-    )
-    output_digest = digest(result)
-    run_id = new_id()
-    source_ref = fixture["source_ref"]
-    evidence_payload = {
-        "payload_schema_version": "1.0",
-        "scenario_id": payload.scenario_id,
-        "fixture_version": fixture["fixture_version"],
-        "outcome": analysis["outcome"],
-        "supporting_event_ids": analysis["supporting_event_ids"],
-        "event_count": analysis["event_count"],
-        "rule_set_version": RULE_SET_VERSION,
-        # Persist event detail so Origo can evaluate evidence without reloading the fixture.
-        "events": fixture["events"],
-    }
-    evidence_record = EvidenceRecord(
-        id=new_id(),
-        workspace_id=workspace_id,
-        mission_id=mission.id,
-        run_id=run_id,
-        evidence_type="synthetic_auth_event_cluster",
-        source_class="synthetic",
-        source_ref=source_ref,
-        producer="nexorion-synthetic-simulator",
-        producer_version=SIMULATOR_VERSION,
-        content_digest=digest(evidence_payload),
-        payload=evidence_payload,
-        limitations=list(LIMITATIONS),
-    )
-    completed_at = utcnow()
-    run = SimulationRun(
-        id=run_id,
-        workspace_id=workspace_id,
-        mission_id=mission.id,
-        baseline_id=baseline.id,
-        scenario_id=payload.scenario_id,
-        fixture_version=fixture["fixture_version"],
-        rule_set_version=RULE_SET_VERSION,
-        idempotency_key=idempotency_key,
-        input_digest=input_digest,
-        output_digest=output_digest,
-        outcome=analysis["outcome"],
-        status="completed",
-        result=result,
-        started_at=started_at,
-        completed_at=completed_at,
-    )
-    db.add(run)
-    db.flush()
-    db.add(evidence_record)
+            "No matching durable job exists for this scenario and idempotency key.")
 
-    # Simulation completion is not an Origo verdict. Keep the mission in
-    # verifying until the independent verification route records its outcome.
-    transition_mission(
-        db, mission=mission, actor_id=None, actor_kind="synthetic-worker",
-        command="begin_verification", expected_version=mission.version,
-        reason="registered deterministic scenario execution completed",
-        request_id=request.state.request_id,
-    )
-    claimed_job.status = "succeeded"
-    claimed_job.outcome = "simulation_completed_pending_origo"
-    claimed_job.lease_owner = None
-    claimed_job.lease_expires_at = None
-    claimed_job.updated_at = completed_at
-    attempt = db.scalar(select(MissionJobAttempt).where(
-        MissionJobAttempt.job_id == claimed_job.id,
-        MissionJobAttempt.attempt_number == claimed_job.attempt_count,
-    ))
-    if attempt is not None:
-        attempt.status = "completed"
-        attempt.ended_at = completed_at
-        attempt.termination_confirmed = True
-        attempt.evidence_refs = [evidence_record.id]
-    claimed_job.evidence_refs = [evidence_record.id]
-    db.add(AuditEvent(
-        actor_id=None, workspace_id=workspace_id, action="mission.job_execution_completed",
-        resource_type="mission_job", resource_id=claimed_job.id, decision="allow",
-        reason="deterministic_synthetic_execution_finished_verification_pending",
-        request_id=request.state.request_id,
-    ))
-    db.add(
-        AuditEvent(
-            actor_id=user.id,
-            workspace_id=workspace_id,
-            action="simulation.completed",
-            resource_type="simulation_run",
-            resource_id=run.id,
-            decision="allow",
-            reason="fixed_synthetic_scenario_completed_verification_pending",
-            request_id=request.state.request_id,
+    worker_enabled = bool(getattr(request.app.state, "worker_enabled", False))
+    if job.status == "queued" and not worker_enabled:
+        # Local tests/development can use the exact worker service synchronously
+        # when the periodic worker is intentionally disabled.
+        worker_id = f"synthetic-api-worker:{user.id}"
+        claimed_job = claim_next_job(
+            db, worker_id=worker_id, lease_seconds=60, job_id=job.id,
         )
-    )
-    db.commit()
-    db.refresh(run)
-    db.refresh(mission)
-    return _run_public(db, run)
+        db.commit()  # Persist the lease before any fixture evaluation starts.
+        if claimed_job is not None:
+            execute_claimed_job(
+                db, job_id=job.id, worker_id=worker_id,
+                request_id=request.state.request_id,
+            )
+    # In production the background worker processes the queued record. Poll only
+    # persisted state; never label a queued/running job as a completed run.
+    deadline = time.monotonic() + 12.0
+    while time.monotonic() < deadline:
+        db.expire_all()
+        existing = db.scalar(select(SimulationRun).where(
+            SimulationRun.workspace_id == workspace_id,
+            SimulationRun.mission_id == mission.id,
+            SimulationRun.idempotency_key == idempotency_key,
+        ))
+        if existing is not None:
+            if existing.scenario_id != payload.scenario_id:
+                raise ApiError(409, "IDEMPOTENCY_KEY_REUSED",
+                    "The idempotency key was already used for a different scenario.")
+            return _run_public(db, existing)
 
+        current_job = db.scalar(select(MissionJob).where(
+            MissionJob.id == job.id,
+            MissionJob.workspace_id == workspace_id,
+            MissionJob.mission_id == mission.id,
+        ))
+        if current_job is None:
+            raise ApiError(404, "JOB_NOT_FOUND", "The queued job no longer exists.")
+        if current_job.status in {"review_required", "uncertain", "failed", "cancelled"}:
+            raise ApiError(
+                409, "JOB_REQUIRES_REVIEW",
+                "The durable job did not complete. Review its persisted state before taking further action.",
+            )
+        if current_job.status == "succeeded":
+            raise ApiError(409, "JOB_RESULT_MISSING",
+                "The job is marked succeeded but no persisted run was found; execution is blocked.")
+        time.sleep(0.1)
+
+    raise ApiError(
+        409, "JOB_STILL_RUNNING",
+        "The durable job has not completed yet. Retry the same request with the same idempotency key.",
+        retryable=True,
+    )
 
 @router.get("/missions/{mission_id}/runs", response_model=list[SimulationRunPublic])
 def list_mission_runs(
