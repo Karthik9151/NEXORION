@@ -2,7 +2,6 @@ import os
 from collections.abc import Iterator
 
 import pytest
-
 from fastapi.testclient import TestClient
 
 from app.config import Settings
