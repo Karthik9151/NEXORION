@@ -146,3 +146,45 @@ test("Origo verification is requested from the UI and persists independently of 
   await page.getByRole("button", { name: "Evidence & Origo", exact: true }).click();
   await expect(page.getByText("verified", { exact: true })).toBeVisible();
 });
+
+
+
+test("authenticated browser session persists, rejects missing CSRF, and is revoked by logout", async ({ page }) => {
+  const email = `session-${Date.now()}@example.com`;
+  await registerWorkspace(page, email);
+
+  // The browser session must survive a navigation/reload.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Mission Center", exact: true })).toBeVisible();
+  const authenticatedStatus = await page.evaluate(async () => {
+    const response = await fetch("/api/v1/auth/me", { credentials: "include" });
+    return response.status;
+  });
+  expect(authenticatedStatus).toBe(200);
+
+  // Cookie presence alone is insufficient: a state-changing request without
+  // the CSRF header must be denied and must not revoke the valid session.
+  const missingCsrfStatus = await page.evaluate(async () => {
+    const response = await fetch("/api/v1/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    return response.status;
+  });
+  expect(missingCsrfStatus).toBe(403);
+  const sessionAfterDeniedMutation = await page.evaluate(async () => {
+    const response = await fetch("/api/v1/auth/me", { credentials: "include" });
+    return response.status;
+  });
+  expect(sessionAfterDeniedMutation).toBe(200);
+
+  // The normal UI logout sends the CSRF token, revokes the server session and
+  // returns the user to the unauthenticated entry screen.
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Welcome back", exact: true })).toBeVisible();
+  const statusAfterLogout = await page.evaluate(async () => {
+    const response = await fetch("/api/v1/auth/me", { credentials: "include" });
+    return response.status;
+  });
+  expect(statusAfterLogout).toBe(401);
+});
