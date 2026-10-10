@@ -18,24 +18,35 @@ LIMITATIONS = [
 ]
 
 
+def _event(
+    event_id: str,
+    offset_seconds: int,
+    principal: str,
+    source_ip: str,
+    outcome: str,
+) -> dict[str, object]:
+    """Create one inert, synthetic fixture event."""
+    return {
+        "event_id": event_id,
+        "offset_seconds": offset_seconds,
+        "principal": principal,
+        "source_ip": source_ip,
+        "outcome": outcome,
+    }
+
+
 SCENARIO_REGISTRY: dict[str, dict[str, Any]] = {
     "scenario-auth-failure-v1": {
         "fixture_version": "1.0.0",
         "source_ref": "fixture://auth-failure/sequence-a",
         "expected_outcome": "suspicious_auth_pattern",
         "events": [
-            {"event_id": "E1", "offset_seconds": 0,
-                "principal": "user-001@example.invalid", "source_ip": "203.0.113.17", "outcome": "failure"},  # noqa: E501
-            {"event_id": "E2", "offset_seconds": 8,
-                "principal": "user-001@example.invalid", "source_ip": "203.0.113.17", "outcome": "failure"},  # noqa: E501
-            {"event_id": "E3", "offset_seconds": 16,
-                "principal": "user-001@example.invalid", "source_ip": "203.0.113.17", "outcome": "failure"},  # noqa: E501
-            {"event_id": "E4", "offset_seconds": 24,
-                "principal": "user-001@example.invalid", "source_ip": "203.0.113.17", "outcome": "failure"},  # noqa: E501
-            {"event_id": "E5", "offset_seconds": 32,
-                "principal": "user-001@example.invalid", "source_ip": "203.0.113.17", "outcome": "failure"},  # noqa: E501
-            {"event_id": "E6", "offset_seconds": 44,
-                "principal": "user-001@example.invalid", "source_ip": "203.0.113.17", "outcome": "success"},  # noqa: E501
+            _event("E1", 0, "user-001@example.invalid", "203.0.113.17", "failure"),
+            _event("E2", 8, "user-001@example.invalid", "203.0.113.17", "failure"),
+            _event("E3", 16, "user-001@example.invalid", "203.0.113.17", "failure"),
+            _event("E4", 24, "user-001@example.invalid", "203.0.113.17", "failure"),
+            _event("E5", 32, "user-001@example.invalid", "203.0.113.17", "failure"),
+            _event("E6", 44, "user-001@example.invalid", "203.0.113.17", "success"),
         ],
     },
     "scenario-auth-benign-control-v1": {
@@ -43,42 +54,47 @@ SCENARIO_REGISTRY: dict[str, dict[str, Any]] = {
         "source_ref": "fixture://auth-failure/sequence-b",
         "expected_outcome": "repeated_auth_failures",
         "events": [
-            {"event_id": "B1", "offset_seconds": 0,
-                "principal": "user-002@example.invalid", "source_ip": "203.0.113.27", "outcome": "failure"},  # noqa: E501
-            {"event_id": "B2", "offset_seconds": 12,
-                "principal": "user-002@example.invalid", "source_ip": "203.0.113.27", "outcome": "failure"},  # noqa: E501
-            {"event_id": "B3", "offset_seconds": 28,
-                "principal": "user-002@example.invalid", "source_ip": "203.0.113.27", "outcome": "failure"},  # noqa: E501
+            _event("B1", 0, "user-002@example.invalid", "203.0.113.27", "failure"),
+            _event("B2", 12, "user-002@example.invalid", "203.0.113.27", "failure"),
+            _event("B3", 28, "user-002@example.invalid", "203.0.113.27", "failure"),
         ],
     },
 }
 
 
 def canonical_json(value: object) -> str:
+    """Serialize JSON data in a stable format for reproducible digests."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def digest(value: object) -> str:
+    """Return a SHA-256 digest of canonical JSON data."""
     return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
 
 
 def get_fixture(scenario_id: str) -> dict[str, Any] | None:
+    """Return a detached copy of one registered fixture."""
     fixture = SCENARIO_REGISTRY.get(scenario_id)
     if fixture is None:
         return None
-    # Return a detached value so callers cannot mutate the server registry.
     return json.loads(json.dumps(fixture))
 
 
 def evaluate_fixture(scenario_id: str, fixture: dict[str, Any]) -> dict[str, Any]:
-    events = sorted(fixture["events"], key=lambda item: (item["offset_seconds"], item["event_id"]))
+    """Apply the fixed ten-minute teaching rule to registered synthetic events."""
+    events = sorted(
+        fixture["events"],
+        key=lambda item: (item["offset_seconds"], item["event_id"]),
+    )
     matching_failures: list[dict[str, Any]] = []
     chosen_success: dict[str, Any] | None = None
+
     for event in events:
         if event["outcome"] != "success":
             continue
         preceding = [
-            prior for prior in events
+            prior
+            for prior in events
             if prior["outcome"] == "failure"
             and prior["principal"] == event["principal"]
             and prior["source_ip"] == event["source_ip"]
@@ -91,10 +107,9 @@ def evaluate_fixture(scenario_id: str, fixture: dict[str, Any]) -> dict[str, Any
 
     if chosen_success is not None:
         outcome = "suspicious_auth_pattern"
-        supporting_ids = (
-            [item["event_id"] for item in matching_failures]
-            + [chosen_success["event_id"]]
-        )
+        supporting_ids = [
+            item["event_id"] for item in matching_failures
+        ] + [chosen_success["event_id"]]
         summary = (
             "A synthetic success followed at least five matching failures "
             "inside the configured window."
@@ -125,19 +140,38 @@ def evaluate_fixture(scenario_id: str, fixture: dict[str, Any]) -> dict[str, Any
     }
 
 
-def verify_fixture_result(scenario_id: str, fixture: dict[str, Any], result: dict[str,
-    Any]) -> dict[str, Any]:
+def verify_fixture_result(
+    scenario_id: str,
+    fixture: dict[str, Any],
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    """Check that a result agrees with a registered fixture's fixed assertions."""
     event_ids = {item["event_id"] for item in fixture["events"]}
     referenced_ids = result.get("supporting_event_ids", [])
     checks = [
-        {"check": "registered_fixture_only", "passed": scenario_id in SCENARIO_REGISTRY},
-        {"check": "synthetic_source_label", "passed": result.get("source_class") == "synthetic"},
-        {"check": "fixture_event_count",
-            "passed": result.get("event_count") == len(fixture["events"])},
-        {"check": "expected_fixture_outcome",
-            "passed": result.get("outcome") == fixture["expected_outcome"]},
-        {"check": "evidence_references_resolve", "passed": isinstance(referenced_ids,
-            list) and set(referenced_ids).issubset(event_ids)},
+        {
+            "check": "registered_fixture_only",
+            "passed": scenario_id in SCENARIO_REGISTRY,
+        },
+        {
+            "check": "synthetic_source_label",
+            "passed": result.get("source_class") == "synthetic",
+        },
+        {
+            "check": "fixture_event_count",
+            "passed": result.get("event_count") == len(fixture["events"]),
+        },
+        {
+            "check": "expected_fixture_outcome",
+            "passed": result.get("outcome") == fixture["expected_outcome"],
+        },
+        {
+            "check": "evidence_references_resolve",
+            "passed": (
+                isinstance(referenced_ids, list)
+                and set(referenced_ids).issubset(event_ids)
+            ),
+        },
     ]
     return {
         "status": "verified" if all(item["passed"] for item in checks) else "inconclusive",
@@ -145,8 +179,8 @@ def verify_fixture_result(scenario_id: str, fixture: dict[str, Any], result: dic
         "scope": "deterministic fixture assertions only",
         "limitations": [
             "This is a bounded fixture-consistency check, not a full independent "
-    "real-world verifier.",
+            "real-world verifier.",
             "It does not validate any live system, external telemetry, or "
-    "operational security claim.",
+            "operational security claim.",
         ],
     }
