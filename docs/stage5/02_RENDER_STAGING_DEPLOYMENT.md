@@ -16,8 +16,8 @@ This deployment branch adds a root Dockerfile, Render Blueprint, and root Python
 - Frontend assets are built in the Node 20 stage.
 - Python dependencies are installed from root `requirements.txt`, which points to the canonical `backend/pyproject.toml` project metadata.
 - Alembic migrations run at container startup before Uvicorn starts.
-- FastAPI serves the built frontend and API on the same origin.
-- No Neon credentials or secrets belong in the repository.
+- FastAPI serves the built frontend and API on the same origin; production frontend requests use same-origin `/v1` routes while local Vite development uses the `/api` proxy.
+- No Neon credentials or bootstrap secrets belong in the repository.
 
 ## npm lockfile
 
