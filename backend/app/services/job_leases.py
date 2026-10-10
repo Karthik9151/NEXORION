@@ -42,6 +42,9 @@ def claim_next_job(
         MissionApproval.workspace_id == job.workspace_id,
         MissionApproval.mission_id == job.mission_id,
     )) if job.approval_id else None
+    approval_expiry = None if approval is None else approval.expires_at
+    if approval_expiry is not None and approval_expiry.tzinfo is None:
+        approval_expiry = approval_expiry.replace(tzinfo=timezone.utc)
     valid = (
         mission is not None and mission.state == "queued"
         and mission.autonomy_tier == "simulate_synthetic"
@@ -54,7 +57,7 @@ def claim_next_job(
         and approval.plan_digest == job.plan_digest
         and approval.plan_version == job.plan_version
         and approval.approved_scope == mission.scope
-        and approval.expires_at > now
+        and approval_expiry is not None and approval_expiry > now
         and approval.revoked_at is None and approval.invalidated_at is None
         and approval.consumed_at is not None
     )
