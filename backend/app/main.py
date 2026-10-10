@@ -22,7 +22,6 @@ from app.config import Settings, get_settings
 from app.db import build_engine, build_session_factory
 from app.dependencies import get_db
 from app.errors import ApiError
-from app.services.synthetic_worker import worker_loop
 from app.routes import (
     approvals,
     auth,
@@ -34,6 +33,7 @@ from app.routes import (
     system,
     world,
 )
+from app.services.synthetic_worker import worker_loop
 
 logger = logging.getLogger("nexorion.api")
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
