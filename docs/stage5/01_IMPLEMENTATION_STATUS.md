@@ -78,3 +78,35 @@ The migration does not rewrite earlier migrations or synthesize terminal timesta
 - [ ] OD-003 and OD-015 remain explicit until the owner decides; no production deployment or merge to main is performed.
 
 **Current verdict:** substantial Stage 5 foundation committed; **not complete and not ready to merge** until the above gaps and CI evidence are resolved.
+
+## Acceptance recheck — 10 October 2026, PR #16
+
+This recheck describes the current `stage5-render-deployment` acceptance branch, not the deployed `main` service. It supersedes earlier statements above that the worker loop had not been wired, while preserving still-open limitations.
+
+**Code-bearing commit checked:** `f988447188f15a106f894049fc578e16bbf1c75c`
+
+### Implemented and verified in CI
+
+- Added `backend/app/services/synthetic_worker.py` with a bounded in-process database-backed worker loop. It claims only approved registered synthetic jobs, commits the lease before execution, persists run/evidence, and leaves the mission in `verifying` for independent Origo verification.
+- Wired startup/shutdown for the optional worker using `NEXORION_WORKER_ENABLED`. The branch Blueprint sets it true for the Stage 5 service; the currently active public `main` service has not been redeployed from this PR.
+- Wired periodic lease reconciliation. Expired leases become `uncertain`; there is no automatic replay when termination cannot be established.
+- Added regression tests proving worker execution persists a run and evidence without creating an Origo verdict, and that a worker acknowledges cancellation before fixture execution without producing a run.
+- Changed the Origo browser-test seed so it no longer calls the simulation endpoint itself: it waits for the API process's background worker to consume the queued job, then the browser separately requests and observes persisted Origo verification.
+- Hardened the production container to run as the non-root `nexorion` UID and added CI to build the image and assert that configured runtime user.
+- Clarified the Settings helper text so localhost API fallback is clearly labeled as local development, not deployed connectivity.
+
+**CI evidence for code-bearing commit `f988447...`:**
+
+- **Backend CI: PASS** on Python 3.11 and 3.12; Ruff/static checks and SQLite migration round-trips passed. PostgreSQL 16 full backend API suite and migration downgrade/re-upgrade passed — [Backend CI run #195](https://github.com/Karthik9151/NEXORION/actions/runs/38051447065).
+- **Frontend CI: PASS** — production build, Playwright 4/4, and production container build plus non-root assertion passed — [Frontend CI run #105](https://github.com/Karthik9151/NEXORION/actions/runs/38051448500).
+
+### Remaining blockers — Stage 5 is not yet fully accepted
+
+1. **Hosted authenticated acceptance remains unverified.** Read-only unauthenticated staging calls return 401 as expected, but no authorized signed-in browser profile/test credential was available. The currently active Render service uses `main`, has auto-deploy disabled, and was not changed by this PR.
+2. **Owner policies remain open:** OD-003 (per-run approval policy) and OD-015 (roles, separation of duties, emergency stop and revocation UX). The implementation's distinct-owner approval is fail-closed and provisional; the agent does not finalize organizational policy.
+3. **Immutable typed-plan model remains incomplete.** The digest binds the persisted mission objective/scope/autonomy contract, not a separate immutable versioned plan entity.
+4. **Classified transient job retries remain incomplete.** The worker intentionally does not automatically replay an unknown outcome. Lease-expiry recovery fails closed, but retry classes/backoff/attempt exhaustion need an owner-accepted policy and dedicated tests before calling this complete.
+5. **Active cancellation of already-running work is not fully demonstrated.** CI proves cancellation acknowledged before fixture execution and confirms termination metadata; it does not prove interruption/termination of a genuinely long-running executor. The only executor is a short deterministic synthetic fixture, and no live-target operation exists.
+6. **Human visual/accessibility review and branch-to-host traceability remain open.** Automated narrow-viewport/overflow coverage is not a complete accessibility audit.
+
+**Stage 5 verdict:** substantial implementation plus green automated CI, but not a full acceptance certificate. Keep PR #16 in draft, do not merge, and do not proceed to any stage that depends on accepted durable-workflow policy until the above blockers are either implemented and verified or explicitly accepted/deferred by the project owner.
