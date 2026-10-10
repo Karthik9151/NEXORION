@@ -28,7 +28,7 @@ from app.services.job_leases import (
     confirm_job_stopped,
     reconcile_expired_leases,
 )
-from app.services.lifecycle import transition_mission
+from app.services.lifecycle import canonical_plan_document, transition_mission
 from app.simulation import (
     LIMITATIONS,
     RULE_SET_VERSION,
@@ -39,7 +39,7 @@ from app.simulation import (
     get_fixture,
     verify_fixture_result,
 )
-from app.stage5_models import MissionJob, MissionJobAttempt
+from app.stage5_models import MissionJob, MissionJobAttempt, MissionPlan
 
 logger = logging.getLogger("nexorion.worker")
 
@@ -134,6 +134,22 @@ def execute_claimed_job(
         or job.scenario_id not in SCENARIO_REGISTRY
     ):
         _review_required(db, job, mission, "synthetic_scope_revalidation_failed", request_id)
+        return None
+
+    plan = db.scalar(select(MissionPlan).where(
+        MissionPlan.id == job.plan_id,
+        MissionPlan.workspace_id == job.workspace_id,
+        MissionPlan.mission_id == mission.id,
+        MissionPlan.plan_version == job.plan_version,
+    )) if job.plan_id else None
+    if (
+        plan is None
+        or plan.plan_digest != job.plan_digest
+        or plan.plan_document != canonical_plan_document(mission)
+    ):
+        _review_required(
+            db, job, mission, "immutable_plan_integrity_failed", request_id,
+        )
         return None
 
     baseline = db.scalar(select(WorldSnapshot).where(
