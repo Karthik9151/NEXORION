@@ -113,7 +113,8 @@ def claim_next_job(
     return job
 
 
-def heartbeat_job(db: Session, *, job_id: str, worker_id: str, lease_seconds: int = 30) -> MissionJob:
+def heartbeat_job(db: Session, *, job_id: str, worker_id: str,
+    lease_seconds: int = 30) -> MissionJob:
     now = _now()
     job = db.scalar(select(MissionJob).where(MissionJob.id == job_id).with_for_update())
     if job is None:
@@ -124,11 +125,14 @@ def heartbeat_job(db: Session, *, job_id: str, worker_id: str, lease_seconds: in
     if expiry is not None and expiry.tzinfo is None:
         expiry = expiry.replace(tzinfo=timezone.utc)
     if expiry is None or expiry <= now:
-        raise ApiError(409, "LEASE_EXPIRED", "An expired lease cannot be renewed; reconcile the uncertain attempt.")
+        raise ApiError(409, "LEASE_EXPIRED",
+            "An expired lease cannot be renewed; reconcile the uncertain attempt.")
     if job.cancel_requested_at is not None:
-        raise ApiError(409, "CANCELLATION_REQUESTED", "The worker must stop and confirm termination.")
+        raise ApiError(409, "CANCELLATION_REQUESTED",
+            "The worker must stop and confirm termination.")
     if not 5 <= lease_seconds <= 120:
-        raise ApiError(422, "INVALID_WORKER_LEASE", "Lease duration must be between 5 and 120 seconds.")
+        raise ApiError(422, "INVALID_WORKER_LEASE",
+            "Lease duration must be between 5 and 120 seconds.")
     job.heartbeat_at = now
     job.lease_expires_at = now + timedelta(seconds=lease_seconds)
     job.updated_at = now
@@ -200,15 +204,21 @@ def confirm_job_stopped(
     job = db.scalar(select(MissionJob).where(MissionJob.id == job_id).with_for_update())
     if job is None:
         raise ApiError(404, "JOB_NOT_FOUND", "The requested job was not found.")
-    if job.lease_owner != worker_id or job.status != "cancelling" or job.cancel_requested_at is None:
-        raise ApiError(409, "STOP_ACKNOWLEDGEMENT_NOT_EXPECTED", "This worker does not own a cancellation-requested job.")
+    if (
+        job.lease_owner != worker_id
+        or job.status != "cancelling"
+        or job.cancel_requested_at is None
+    ):
+        raise ApiError(409, "STOP_ACKNOWLEDGEMENT_NOT_EXPECTED",
+            "This worker does not own a cancellation-requested job.")
     now = _now()
     attempt = db.scalar(select(MissionJobAttempt).where(
         MissionJobAttempt.job_id == job.id,
         MissionJobAttempt.attempt_number == job.attempt_count,
     ).with_for_update())
     if attempt is None:
-        raise ApiError(409, "ATTEMPT_RECORD_MISSING", "Cannot establish safe termination without an attempt record.")
+        raise ApiError(409, "ATTEMPT_RECORD_MISSING",
+            "Cannot establish safe termination without an attempt record.")
     attempt.status = "cancelled"
     attempt.ended_at = now
     attempt.termination_confirmed = True
