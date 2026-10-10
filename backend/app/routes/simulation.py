@@ -155,26 +155,6 @@ def simulate_mission(
             )
         return _run_public(db, existing)
 
-    if mission.state != "queued":
-        raise ApiError(
-            409,
-            "DURABLE_JOB_REQUIRED",
-            "Direct simulation is disabled. Queue a planned mission with a current approval first.",
-        )
-    job = db.scalar(select(MissionJob).where(
-        MissionJob.workspace_id == workspace_id,
-        MissionJob.mission_id == mission.id,
-        MissionJob.idempotency_key == idempotency_key,
-        MissionJob.scenario_id == payload.scenario_id,
-        MissionJob.status == "queued",
-    ))
-    if job is None:
-        raise ApiError(409, "DURABLE_JOB_REQUIRED", "No matching queued job exists for this scenario and idempotency key.")
-    claimed_job = claim_next_job(
-        db, worker_id=f"synthetic-api-worker:{user.id}", lease_seconds=60, job_id=job.id,
-    )
-    if claimed_job is None:
-        raise ApiError(409, "JOB_CLAIM_BLOCKED", "The job failed execution-boundary revalidation and requires review.")
     if mission.autonomy_tier != "simulate_synthetic":
         raise ApiError(
             403,
@@ -211,6 +191,26 @@ def simulate_mission(
             "The stored baseline digest did not match its snapshot; execution was blocked.",
         )
 
+    if mission.state != "queued":
+        raise ApiError(
+            409,
+            "DURABLE_JOB_REQUIRED",
+            "Direct simulation is disabled. Queue a planned mission with a current approval first.",
+        )
+    job = db.scalar(select(MissionJob).where(
+        MissionJob.workspace_id == workspace_id,
+        MissionJob.mission_id == mission.id,
+        MissionJob.idempotency_key == idempotency_key,
+        MissionJob.scenario_id == payload.scenario_id,
+        MissionJob.status == "queued",
+    ))
+    if job is None:
+        raise ApiError(409, "DURABLE_JOB_REQUIRED", "No matching queued job exists for this scenario and idempotency key.")
+    claimed_job = claim_next_job(
+        db, worker_id=f"synthetic-api-worker:{user.id}", lease_seconds=60, job_id=job.id,
+    )
+    if claimed_job is None:
+        raise ApiError(409, "JOB_CLAIM_BLOCKED", "The job failed execution-boundary revalidation and requires review.")
     started_at = utcnow()
     analysis = evaluate_fixture(payload.scenario_id, fixture)
     # This bounded fixture consistency check is not an Origo verification attempt.
