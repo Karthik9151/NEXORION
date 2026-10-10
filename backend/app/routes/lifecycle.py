@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_current_user, get_db, require_csrf, require_workspace_membership
 from app.errors import ApiError
 from app.models import Mission, User
-from app.schemas import MissionPublic, StrictModel, MissionScope
+from app.schemas import MissionPublic, MissionScope, StrictModel
 from app.services.lifecycle import transition_mission
 
 router = APIRouter(prefix="/missions", tags=["mission-lifecycle"])
