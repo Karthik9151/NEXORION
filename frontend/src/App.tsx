@@ -122,17 +122,12 @@ const DEMO_RUNS: SimulationRun[] = [
     result: {
       summary: "Repeated synthetic authentication failures were recorded without the required success-after-threshold pattern.",
       source_class: "synthetic",
-      verification: {
-        status: "verified",
-        scope: "deterministic fixture assertions only",
+      fixture_consistency: {
+        scope: "sample UI fixture only",
         checks: [
-          { check: "registered_fixture_only", passed: true },
-          { check: "synthetic_source_label", passed: true },
-          { check: "fixture_event_count", passed: true },
-          { check: "expected_fixture_outcome", passed: true },
-          { check: "evidence_references_resolve", passed: true },
+          { check: "sample_record", passed: null },
         ],
-        limitations: ["This is a sample UI record, not a live backend result."],
+        limitations: ["Sample data only; no Origo verification attempt was recorded."],
       },
     },
     evidence: [DEMO_EVIDENCE],
