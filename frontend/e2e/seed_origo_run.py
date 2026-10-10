@@ -7,16 +7,21 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 sys.path.insert(0, str(PROJECT_ROOT / "backend" / "tests"))
 
 from app.config import get_settings  # noqa: E402
+from app.db import build_engine, build_session_factory  # noqa: E402
+from app.models import SimulationRun  # noqa: E402
+from app.stage5_models import MissionJob  # noqa: E402
 from app.main import create_app  # noqa: E402
 from helpers import csrf_headers, mission_payload, prepare_approved_job, register  # noqa: E402
 
@@ -29,7 +34,10 @@ def main() -> int:
     scenario_id = "scenario-auth-failure-v1"
     idempotency_key = f"origo-e2e-{uuid4().hex}"
 
-    with TestClient(create_app(get_settings())) as client:
+    # The seed process prepares an authorized job but deliberately disables its own
+    # worker. The separately running browser-test API process must execute it.
+    test_settings = get_settings().model_copy(update={"nexorion_worker_enabled": False})
+    with TestClient(create_app(test_settings)) as client:
         owner = register(client, email)
         workspace_id = owner["workspaces"][0]["id"]
         payload = mission_payload()
@@ -49,27 +57,50 @@ def main() -> int:
             headers=csrf_headers(client, workspace_id),
         )
         assert baseline.status_code == 201, baseline.text
-        prepare_approved_job(
+        job = prepare_approved_job(
             client, workspace_id, mission_id, scenario_id, idempotency_key
         )
-        simulation = client.post(
-            f"/v1/missions/{mission_id}/simulate",
-            headers={
-                **csrf_headers(client, workspace_id),
-                "Idempotency-Key": idempotency_key,
-            },
-            json={"scenario_id": scenario_id},
+
+    # Wait for the API process's configured background worker to consume the
+    # durable queue record. This makes the E2E test fail if the worker loop is
+    # absent or not started; the seed process never calls /simulate itself.
+    engine = build_engine(get_settings().database_url)
+    sessions = build_session_factory(engine)
+    run_id = None
+    try:
+        deadline = time.monotonic() + 20.0
+        while time.monotonic() < deadline:
+            with sessions() as session:
+                stored_job = session.get(MissionJob, job["id"])
+                run = session.scalar(select(SimulationRun).where(
+                    SimulationRun.workspace_id == workspace_id,
+                    SimulationRun.mission_id == mission_id,
+                    SimulationRun.idempotency_key == idempotency_key,
+                ))
+                if run is not None:
+                    assert stored_job is not None and stored_job.status == "succeeded"
+                    run_id = run.id
+                    break
+                if stored_job is None or stored_job.status in {
+                    "review_required", "uncertain", "failed", "cancelled",
+                }:
+                    raise AssertionError(
+                        f"Background worker did not safely complete job {job['id']}: "
+                        f"{None if stored_job is None else stored_job.status}"
+                    )
+            time.sleep(0.1)
+        assert run_id is not None, (
+            "The background worker did not persist a run within 20 seconds."
         )
-        assert simulation.status_code == 201, simulation.text
-        run = simulation.json()
-        assert run["status"] == "completed", run
+    finally:
+        engine.dispose()
 
     print(
         json.dumps(
             {
                 "email": email,
                 "password": password,
-                "run_id": run["id"],
+                "run_id": run_id,
             }
         )
     )
