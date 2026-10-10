@@ -101,7 +101,6 @@ def enqueue_job(
         MissionApproval.decision == "approved",
         MissionApproval.plan_digest == digest,
         MissionApproval.plan_version == mission.version,
-        MissionApproval.approved_scope == mission.scope,
         MissionApproval.revoked_at.is_(None),
         MissionApproval.invalidated_at.is_(None),
         MissionApproval.consumed_at.is_(None),
@@ -117,6 +116,7 @@ def enqueue_job(
     ))
     if denied is not None:
         raise ApiError(403, "APPROVAL_DENIED", "A current approval denial blocks queueing.")
+    approvals = [item for item in approvals if item.approved_scope == mission.scope]
     if len(approvals) != 1:
         raise ApiError(409, "APPROVAL_REQUIRED", "Exactly one current, unconsumed approval must match the mission contract.")
     approval = approvals[0]
