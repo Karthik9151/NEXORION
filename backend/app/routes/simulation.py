@@ -211,6 +211,12 @@ def simulate_mission(
     )
     if claimed_job is None:
         raise ApiError(409, "JOB_CLAIM_BLOCKED", "The job failed execution-boundary revalidation and requires review.")
+    # Commit the lease and running state before work begins so recovery can observe it.
+    # If the process dies during deterministic evaluation, the job remains running
+    # until reconciliation marks the outcome uncertain; it is never silently replayed.
+    db.commit()
+    db.refresh(mission)
+    db.refresh(claimed_job)
     started_at = utcnow()
     analysis = evaluate_fixture(payload.scenario_id, fixture)
     # This bounded fixture consistency check is not an Origo verification attempt.
