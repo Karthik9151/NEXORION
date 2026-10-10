@@ -6,6 +6,8 @@ NEXORION is a proposed persistent digital environment in which a researcher can 
 
 > **Project status (10 October 2026):** Stage 4 work is recorded on the `stage4-implementation` branch, not as a production release. The Stage 4 acceptance record documents passing frontend build and Playwright checks, backend tests and Ruff on Python 3.11/3.12, and PostgreSQL 16 migration/API checks for the recorded code-bearing commit. Re-check CI on the final pull-request head before merge. A hosted smoke test and human visual sign-off have not been performed; production hosting is blocked by same-origin cookie/CSRF handling, missing owner bootstrap, and the need for the full API suite on PostgreSQL 16. See the [Stage 4 acceptance record](docs/stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md) and [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md). This project follows a hard **$0 spend ceiling**: local development and CI first, no paid infrastructure or billable model APIs, and no payment card on hosting accounts.
 
+## The three identities
+
 - **NEXORION — the digital universe:** the persistent environment and world model for entities, relationships, missions, scenarios, evidence, and research history.
 - **NEXARCH — the central intelligence:** the primary mission reasoning and orchestration layer. It decomposes user intent into bounded work and coordinates specialists; it cannot authorize its own consequential actions.
 - **ERGOUSIARCH — the governing authority:** the governance concept for policy, approval, audit, and execution-gate controls. It must be realized through deterministic software; the name itself is not an enforcement mechanism.
@@ -90,7 +92,13 @@ The Stage 3 branch adds a verified first executable world-and-simulation slice o
 - [Stage 3 index and acceptance gate](docs/stage3/00_STAGE3_INDEX.md)
 - API setup and walkthrough: [backend README](backend/README.md)
 
-Only registered synthetic fixtures can execute. This branch exposes no network scanning, shell commands, real-credential attempts, live telemetry ingestion, or live-system mutation. The basic fixture assertion checker is not the full independent Origo verifier, and the interface is not yet a visual graph editor.
+Those capability notes describe the **Stage 3 branch scope**: only registered synthetic fixtures execute, and no network scanning, shell commands, real-credential attempts, live telemetry ingestion, or live-system mutation are exposed. Stage 4 adds the visual workspace and persisted independent Origo verification described below; those additions do not authorize live-system activity.
+
+## Stage 4 — Workspace, Origo verification and reports
+
+The `stage4-implementation` working branch integrates the visual workspace with the authenticated API, workspace-scoped graph operations, registered synthetic scenarios, persisted Origo verification, and server-generated JSON/Markdown research reports. The branch's [Stage 4 acceptance record](docs/stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md) records frontend production-build and Playwright E2E passes, backend tests/Ruff on Python 3.11 and 3.12, and SQLite/PostgreSQL 16 migration plus PostgreSQL API integration checks for its code-bearing acceptance commit.
+
+**Close-out is still pending:** the acceptance record does not document a hosted smoke test or human visual sign-off; the latest branch-head CI must be rechecked before merge. Same-origin deployment, production owner bootstrap, and the full API suite on PostgreSQL 16 are separate readiness blockers. No Stage 4 merge SHA is recorded here because a merge has not been verified. See the [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md). Stage 4 remains synthetic-only and is not a production release.
 
 ## Core documentation
 
