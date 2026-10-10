@@ -2,17 +2,19 @@ name: Backend CI
 
 on:
   push:
-    branches: [main, stage2, stage3-digital-world]
+    branches: [main, stage2, stage3-digital-world, stage4-implementation]
     paths:
       - "backend/**"
       - "docs/stage2/**"
       - "docs/stage3/**"
+      - "docs/stage4/**"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
       - "docs/stage2/**"
       - "docs/stage3/**"
+      - "docs/stage4/**"
       - ".github/workflows/backend-ci.yml"
 
 permissions:
