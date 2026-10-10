@@ -1,7 +1,7 @@
 # NEXORION — Implementation Tracker, $0 Deployment Plan and Owner Gates
 
 **Last reviewed:** 10 October 2026  
-**Working branch:** `stage4-implementation`  
+**Current implementation branch:** `stage5-implementation` (Stage 4 evidence remains tied to its recorded commits)  
 **Target base:** `main`  
 **Scope:** implementation tracking and documentation alignment only. This document update does not add runtime code, create cloud resources, deploy the app, or prove any unrun test.  
 **Binding budget:** **$0 spend ceiling** as requested by the project owner.
@@ -41,7 +41,7 @@ A plan, unchecked box, dependency name, diagram, or old green run is not evidenc
 | Stage 2 — API foundation | FastAPI, persistence, sessions/CSRF, workspace authorization, migrations and SQLite API tests exist | See [backend README](../../backend/README.md); production identity/onboarding is not solved by the local account adapter. | **Implemented slice; not production-ready** |
 | Stage 3 — Digital world and deterministic simulation | Prior stage record cites passing Python 3.11/3.12, Ruff, SQLite migration, PostgreSQL 16 migration, and PostgreSQL API smoke checks | [Stage 3 verification run](https://github.com/Karthik9151/NEXORION/actions/runs/38026378118). Evidence applies to the named Stage 3 commit/scope, not future changes. | **Verified for bounded synthetic scope** |
 | Stage 4 — UI/UX, Origo verification and reports | Acceptance record documents frontend build/E2E and backend checks passing for code-bearing commit `bdefa1c71da347dff9ad1f1d55696f1188e13fb3` | [Frontend CI](https://github.com/Karthik9151/NEXORION/actions/runs/38034621769), [Backend CI](https://github.com/Karthik9151/NEXORION/actions/runs/38034621760), and [Stage 4 acceptance record](02_ACCEPTANCE_AND_SECURITY_STATUS.md). Recheck the final PR-head CI before merge. Hosted smoke test and human visual sign-off are documented as not run. | **Automated evidence recorded; close-out pending** |
-| Stage 5 — Governance and durable workflows | Not implemented as the full governance/workflow system | Complete owner decisions OD-003, OD-004 and OD-015; implement the acceptance matrix in section 7 with PostgreSQL 16 race/recovery tests. | **Not started / owner-gated** |
+| Stage 5 — Governance and durable workflows | Lifecycle commands, scoped approval records, durable job records, lease service, execution gate and initial tests are committed on `stage5-implementation`; the worker loop, retry policy, cancellation/recovery integration, and acceptance evidence remain incomplete. | See [Stage 5 implementation status](../stage5/01_IMPLEMENTATION_STATUS.md). PostgreSQL 16 CI is configured; inspect the exact branch-head result before marking any gate verified. OD-003 and OD-015 remain open. | **In progress / not ready to merge** |
 | Stage 6 — Bounded specialist agents | No real model-provider integration verified | Close OD-001, OD-002, OD-005 and OD-008 first. Use typed interfaces and a mocked model; no billable API calls. | **Deferred pending Stage 5 and owner decisions** |
 | Stage 7 — Isolated lab | Not in scope | Close OD-006 and complete a separate threat model, isolation and emergency-stop review. No provisioning under the current plan. | **Deferred — do not start** |
 | Stage 8 — Operations hardening | No production release posture established | Define free local/CI operational checks; do not claim backup/restore or availability without evidence. Release policy in OD-011 remains owner-controlled. | **Later gate** |
@@ -168,3 +168,10 @@ Minimum gates: bounded role schemas; versioned input/output contracts; allowlist
 - [Requirement-to-test traceability](../stage1/07_REQUIREMENT_TO_TEST_TRACEABILITY.md)
 
 Update this file on each implementation PR: record status transitions, the exact commit/CI run that supports each “Verified” entry, remaining owner decisions, and any new cost or safety blockers. If verification cannot be run without payment, do not pay; record the gate as blocked by the $0 budget and propose a local/CI alternative.
+
+
+## Stage 5 implementation update — 10 October 2026
+
+Stage 5 work is underway on the dedicated `stage5-implementation` branch, based on `main` commit `30bb0464e76e53979b7b7650e9e12b3b5161820e`. The initial implementation adds a guarded lifecycle service, transition history, approval and job records, a durable queue endpoint, lease/recovery service functions, Origo-owned terminal outcomes, and a PostgreSQL 16 CI suite. It also updates the frontend API client to use server-owned commands and show the approval gate.
+
+This update does **not** mean Stage 5 is accepted. The worker loop and periodic recovery reconciliation are not wired into application startup; classified retries and end-to-end cancellation/termination remain incomplete; the canonical plan is currently a digest of the persisted mission contract rather than a separate immutable typed plan; and the full branch-head CI result still needs inspection. See [Stage 5 implementation status](../stage5/01_IMPLEMENTATION_STATUS.md) for the file/test mapping, migration notes, limitations and acceptance checklist.
