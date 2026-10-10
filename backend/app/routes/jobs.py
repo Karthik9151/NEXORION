@@ -11,9 +11,9 @@ from app.dependencies import get_current_user, get_db, require_csrf, require_wor
 from app.errors import ApiError
 from app.models import AuditEvent, Mission, User, WorldSnapshot
 from app.schemas import StrictModel
-from app.services.lifecycle import canonical_mission_digest, transition_mission
+from app.services.lifecycle import (\n    canonical_mission_digest,\n    canonical_plan_document,\n    transition_mission,\n)
 from app.simulation import SCENARIO_REGISTRY
-from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt
+from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt, MissionPlan
 
 router = APIRouter(prefix="/missions", tags=["mission-jobs"])
 
@@ -28,6 +28,7 @@ class JobPublic(StrictModel):
     workspace_id: str
     mission_id: str
     approval_id: str | None
+    plan_id: str | None
     plan_digest: str
     plan_version: int
     scenario_id: str
@@ -48,7 +49,7 @@ class JobPublic(StrictModel):
 def _public(job: MissionJob) -> JobPublic:
     return JobPublic(
         id=job.id, workspace_id=job.workspace_id, mission_id=job.mission_id,
-        approval_id=job.approval_id, plan_digest=job.plan_digest,
+        approval_id=job.approval_id, plan_id=job.plan_id, plan_digest=job.plan_digest,
         plan_version=job.plan_version, scenario_id=job.scenario_id,
         idempotency_key=job.idempotency_key, status=job.status,
         lease_owner=job.lease_owner, lease_expires_at=job.lease_expires_at,
@@ -143,6 +144,23 @@ def enqueue_job(
         raise ApiError(409, "APPROVAL_REQUIRED",
             "Exactly one current, unconsumed approval must match the mission contract.")
     approval = approvals[0]
+    plan = db.scalar(select(MissionPlan).where(
+        MissionPlan.id == approval.plan_id,
+        MissionPlan.workspace_id == workspace_id,
+        MissionPlan.mission_id == mission.id,
+        MissionPlan.plan_version == mission.version,
+    )) if approval.plan_id else None
+    if (
+        plan is None
+        or approval.plan_id != plan.id
+        or plan.plan_digest != digest
+        or plan.plan_document != canonical_plan_document(mission)
+    ):
+        raise ApiError(
+            409,
+            "IMMUTABLE_PLAN_REQUIRED",
+            "Queueing requires a persisted immutable plan matching the current mission contract.",
+        )
     try:
         transition_mission(
             db, mission=mission, actor_id=user.id, actor_kind="user",
@@ -151,7 +169,7 @@ def enqueue_job(
         )
         job = MissionJob(
             workspace_id=workspace_id, mission_id=mission.id, approval_id=approval.id,
-            plan_digest=digest, plan_version=mission.version - 1,
+            plan_id=plan.id, plan_digest=plan.plan_digest, plan_version=plan.plan_version,
             scenario_id=payload.scenario_id, idempotency_key=payload.idempotency_key,
             status="queued", attempt_count=0, max_attempts=2, evidence_refs=[],
             created_at=now, updated_at=now,
