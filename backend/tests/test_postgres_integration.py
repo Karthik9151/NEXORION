@@ -32,7 +32,7 @@ def test_postgres_auth_mission_baseline_and_simulation_round_trip() -> None:
 
     try:
         with TestClient(application) as client:
-            email = f"pg-{uuid4().hex}@example.test"
+            email = f"pg-{uuid4().hex}@example.com"
             registration = client.post(
                 "/v1/auth/register",
                 json={
