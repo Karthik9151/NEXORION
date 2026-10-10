@@ -13,7 +13,7 @@ from app.models import AuditEvent, Mission, User, WorldSnapshot
 from app.schemas import StrictModel
 from app.services.lifecycle import canonical_mission_digest, transition_mission
 from app.simulation import SCENARIO_REGISTRY
-from app.stage5_models import MissionApproval, MissionJob
+from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt
 
 router = APIRouter(prefix="/missions", tags=["mission-jobs"])
 
