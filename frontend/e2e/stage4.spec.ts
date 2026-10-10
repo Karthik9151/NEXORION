@@ -28,7 +28,7 @@ async function addEntity(page: Page, name: string) {
 
 test("invalid login returns a safe visible error", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("Email address").fill("unknown-stage4-user@example.test");
+  await page.getByLabel("Email address").fill("unknown-stage4-user@example.com");
   await page.getByLabel("Password").fill("incorrect-password");
   await page.getByRole("button", { name: "Sign in securely", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Email or password is incorrect.");
@@ -36,7 +36,7 @@ test("invalid login returns a safe visible error", async ({ page }) => {
 });
 
 test("registration, workspace isolation, graph, simulation, verification, reporting, and mobile navigation", async ({ page }) => {
-  const email = `stage4-${Date.now()}@example.test`;
+  const email = `stage4-${Date.now()}@example.com`;
   await registerWorkspace(page, email);
 
   // The UI starts with the workspace returned by the authenticated API.
