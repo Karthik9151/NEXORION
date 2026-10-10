@@ -271,9 +271,13 @@ class OrigoVerification(Base):
     verifier_version: Mapped[str] = mapped_column(String(64), nullable=False)
     checks: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
     reasons: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    discrepancies: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
+    discrepancies: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     evidence_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    evidence_fingerprints: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
+    evidence_fingerprints: Mapped[dict[str, str]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
     idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
         default=utcnow)
