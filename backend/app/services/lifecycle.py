@@ -3,9 +3,9 @@
 Only command names map to transitions. Clients never submit a target state.
 Successful terminal outcomes require an explicitly trusted verifier caller.
 """
-from datetime import datetime, timezone
 import hashlib
 import json
+from datetime import datetime, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
