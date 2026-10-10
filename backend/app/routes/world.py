@@ -17,7 +17,6 @@ from app.models import (
     WorldRelationship,
     WorldSnapshot,
     new_id,
-    utcnow,
 )
 from app.schemas import (
     WorldEntityCreate,
@@ -135,7 +134,8 @@ def create_world_entity(
     )
     db.add(entity)
     db.flush()
-    db.add(_audit(request, user, workspace_id, "world.entity.created", "world_entity", entity.id, "synthetic_entity_created"))
+    db.add(_audit(request, user, workspace_id, "world.entity.created", "world_entity",
+        entity.id, "synthetic_entity_created"))
     db.commit()
     db.refresh(entity)
     return _entity_public(entity)
@@ -171,7 +171,8 @@ def create_world_relationship(
 ) -> WorldRelationshipPublic:
     require_workspace_membership(db, user_id=user.id, workspace_id=workspace_id)
     if payload.from_entity_id == payload.to_entity_id:
-        raise ApiError(422, "INVALID_WORLD_RELATIONSHIP", "A relationship must connect two distinct entities.")
+        raise ApiError(422, "INVALID_WORLD_RELATIONSHIP",
+            "A relationship must connect two distinct entities.")
     endpoint_ids = {payload.from_entity_id, payload.to_entity_id}
     endpoints = db.scalars(
         select(WorldEntity).where(
@@ -180,7 +181,8 @@ def create_world_relationship(
         )
     ).all()
     if {entity.id for entity in endpoints} != endpoint_ids:
-        raise ApiError(404, "WORLD_ENTITY_NOT_FOUND", "One or more entities were not found in this workspace.")
+        raise ApiError(404, "WORLD_ENTITY_NOT_FOUND",
+            "One or more entities were not found in this workspace.")
 
     relationship = WorldRelationship(
         id=new_id(),
@@ -194,7 +196,8 @@ def create_world_relationship(
     )
     db.add(relationship)
     db.flush()
-    db.add(_audit(request, user, workspace_id, "world.relationship.created", "world_relationship", relationship.id, "synthetic_relationship_created"))
+    db.add(_audit(request, user, workspace_id, "world.relationship.created",
+        "world_relationship", relationship.id, "synthetic_relationship_created"))
     db.commit()
     db.refresh(relationship)
     return _relationship_public(relationship)
@@ -219,7 +222,8 @@ def list_world_relationships(
     return [_relationship_public(relationship) for relationship in rows]
 
 
-@router.post("/missions/{mission_id}/baselines", response_model=WorldSnapshotPublic, status_code=201)
+@router.post("/missions/{mission_id}/baselines", response_model=WorldSnapshotPublic,
+    status_code=201)
 def capture_mission_baseline(
     mission_id: str,
     request: Request,
@@ -236,9 +240,12 @@ def capture_mission_baseline(
         entity_query = entity_query.where(WorldEntity.id.in_(scoped_entity_ids))
     entities = db.scalars(entity_query.order_by(WorldEntity.id.asc())).all()
     if scoped_entity_ids and {entity.id for entity in entities} != set(scoped_entity_ids):
-        raise ApiError(404, "WORLD_ENTITY_NOT_FOUND", "A scoped entity was not found in this workspace.")
+        raise ApiError(404, "WORLD_ENTITY_NOT_FOUND",
+            "A scoped entity was not found in this workspace.")
     selected_ids = {entity.id for entity in entities}
-    relationship_query = select(WorldRelationship).where(WorldRelationship.workspace_id == workspace_id)
+    relationship_query = select(WorldRelationship).where(
+        WorldRelationship.workspace_id == workspace_id
+    )
     relationships = db.scalars(relationship_query.order_by(WorldRelationship.id.asc())).all()
     relationships = [
         relationship for relationship in relationships
@@ -290,7 +297,8 @@ def capture_mission_baseline(
     )
     db.add(snapshot)
     db.flush()
-    db.add(_audit(request, user, workspace_id, "world.baseline.captured", "world_snapshot", snapshot.id, "versioned_synthetic_baseline_captured"))
+    db.add(_audit(request, user, workspace_id, "world.baseline.captured", "world_snapshot",
+        snapshot.id, "versioned_synthetic_baseline_captured"))
     db.commit()
     db.refresh(snapshot)
     return _snapshot_public(snapshot)
