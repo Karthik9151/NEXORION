@@ -106,7 +106,8 @@ class MissionPublic(StrictModel):
 
 
 SafeAttributeValue = str | int | float | bool | None
-SensitiveAttributeTokens = ("password", "secret", "token", "cookie", "credential", "api_key", "private_key")
+SensitiveAttributeTokens = ("password", "secret", "token", "cookie", "credential",
+    "api_key", "private_key")
 
 
 class WorldEntityCreate(StrictModel):
@@ -125,7 +126,8 @@ class WorldEntityCreate(StrictModel):
 
     @field_validator("attributes")
     @classmethod
-    def validate_attributes(cls, value: dict[str, SafeAttributeValue]) -> dict[str, SafeAttributeValue]:
+    def validate_attributes(cls, value: dict[str, SafeAttributeValue]) -> dict[str,
+        SafeAttributeValue]:
         if len(value) > 30:
             raise ValueError("At most 30 attributes are allowed.")
         for key in value:
@@ -154,7 +156,8 @@ class WorldEntityPublic(StrictModel):
 class WorldRelationshipCreate(StrictModel):
     from_entity_id: str = Field(min_length=1, max_length=64)
     to_entity_id: str = Field(min_length=1, max_length=64)
-    relationship_type: Literal["depends_on", "authenticates_to", "emits", "belongs_to", "observed_by"]
+    relationship_type: Literal["depends_on", "authenticates_to", "emits", "belongs_to",
+        "observed_by"]
 
 
 class WorldRelationshipPublic(StrictModel):
