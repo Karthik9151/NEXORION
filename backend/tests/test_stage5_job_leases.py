@@ -4,8 +4,18 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.db import Base
-from app.models import (\n    EvidenceRecord, Mission, OrigoVerification, SimulationRun, User,\n    WorldSnapshot, Workspace, WorkspaceMembership,\n)\nfrom app.services.job_leases import claim_next_job, confirm_job_stopped, reconcile_expired_leases
+from app.db import Base, build_session_factory
+from app.models import (
+    EvidenceRecord,
+    Mission,
+    OrigoVerification,
+    SimulationRun,
+    User,
+    WorldSnapshot,
+    Workspace,
+    WorkspaceMembership,
+)
+from app.services.job_leases import claim_next_job, reconcile_expired_leases
 from app.services.lifecycle import canonical_mission_digest, transition_mission
 from app.services.synthetic_worker import execute_claimed_job, run_worker_once
 from app.simulation import digest
