@@ -10,7 +10,6 @@ import asyncio
 import logging
 import time
 from collections.abc import Callable
-from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
