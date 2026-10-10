@@ -1,7 +1,7 @@
 import os
+from collections.abc import Iterator
 
 import pytest
-from collections.abc import Iterator
 
 from fastapi.testclient import TestClient
 
