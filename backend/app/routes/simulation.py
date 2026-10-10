@@ -23,6 +23,9 @@ from app.schemas import (
     SimulationRunCreate,
     SimulationRunPublic,
 )
+from app.services.job_leases import claim_next_job
+from app.services.lifecycle import transition_mission
+from app.stage5_models import MissionJob, MissionJobAttempt
 from app.simulation import (
     LIMITATIONS,
     RULE_SET_VERSION,
@@ -152,12 +155,26 @@ def simulate_mission(
             )
         return _run_public(db, existing)
 
-    if mission.state != "draft":
+    if mission.state != "queued":
         raise ApiError(
             409,
-            "MISSION_NOT_RUNNABLE",
-            "This mission is not in a runnable draft state; create a new mission for a rerun.",
+            "DURABLE_JOB_REQUIRED",
+            "Direct simulation is disabled. Queue a planned mission with a current approval first.",
         )
+    job = db.scalar(select(MissionJob).where(
+        MissionJob.workspace_id == workspace_id,
+        MissionJob.mission_id == mission.id,
+        MissionJob.idempotency_key == idempotency_key,
+        MissionJob.scenario_id == payload.scenario_id,
+        MissionJob.status == "queued",
+    ))
+    if job is None:
+        raise ApiError(409, "DURABLE_JOB_REQUIRED", "No matching queued job exists for this scenario and idempotency key.")
+    claimed_job = claim_next_job(
+        db, worker_id=f"synthetic-api-worker:{user.id}", lease_seconds=60, job_id=job.id,
+    )
+    if claimed_job is None:
+        raise ApiError(409, "JOB_CLAIM_BLOCKED", "The job failed execution-boundary revalidation and requires review.")
     if mission.autonomy_tier != "simulate_synthetic":
         raise ApiError(
             403,
@@ -265,15 +282,35 @@ def simulate_mission(
     db.flush()
     db.add(evidence_record)
 
-    previous_state = mission.state
-    # Mission lifecycle reflects execution completion, not the separate Origo verdict.
-    transitions = ["running", "succeeded"]
-    for next_state in transitions:
-        db.add(_audit_transition(request, user, mission, previous_state, next_state))
-        mission.state = next_state
-        mission.version += 1
-        previous_state = next_state
-    mission.updated_at = completed_at
+    # Simulation completion is not an Origo verdict. Keep the mission in
+    # verifying until the independent verification route records its outcome.
+    transition_mission(
+        db, mission=mission, actor_id=None, actor_kind="synthetic-worker",
+        command="begin_verification", expected_version=mission.version,
+        reason="registered deterministic scenario execution completed",
+        request_id=request.state.request_id,
+    )
+    claimed_job.status = "succeeded"
+    claimed_job.outcome = "simulation_completed_pending_origo"
+    claimed_job.lease_owner = None
+    claimed_job.lease_expires_at = None
+    claimed_job.updated_at = completed_at
+    attempt = db.scalar(select(MissionJobAttempt).where(
+        MissionJobAttempt.job_id == claimed_job.id,
+        MissionJobAttempt.attempt_number == claimed_job.attempt_count,
+    ))
+    if attempt is not None:
+        attempt.status = "completed"
+        attempt.ended_at = completed_at
+        attempt.termination_confirmed = True
+        attempt.evidence_refs = [evidence_record.id]
+    claimed_job.evidence_refs = [evidence_record.id]
+    db.add(AuditEvent(
+        actor_id=None, workspace_id=workspace_id, action="mission.job_execution_completed",
+        resource_type="mission_job", resource_id=claimed_job.id, decision="allow",
+        reason="deterministic_synthetic_execution_finished_verification_pending",
+        request_id=request.state.request_id,
+    ))
     db.add(
         AuditEvent(
             actor_id=user.id,
@@ -282,7 +319,7 @@ def simulate_mission(
             resource_type="simulation_run",
             resource_id=run.id,
             decision="allow",
-            reason="fixed_synthetic_scenario_completed",
+            reason="fixed_synthetic_scenario_completed_verification_pending",
             request_id=request.state.request_id,
         )
     )
