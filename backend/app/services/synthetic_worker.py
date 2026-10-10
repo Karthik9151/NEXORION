@@ -10,13 +10,11 @@ import asyncio
 import logging
 import time
 from collections.abc import Callable
-from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.errors import ApiError
 from app.models import (
     AuditEvent,
     EvidenceRecord,
