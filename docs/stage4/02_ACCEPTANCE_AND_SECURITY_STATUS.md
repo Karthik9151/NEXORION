@@ -45,8 +45,15 @@ Do not merge Stage 4 until the final pull-request head has green Frontend CI (bu
 
 ### Final run record
 
-- Frontend build: pending final pull-request checks.
-- Playwright browser suite: pending final pull-request checks.
-- Backend Python 3.11 / 3.12 tests and Ruff: pending final pull-request checks.
-- PostgreSQL migration/API integration: pending final pull-request checks.
-- Manual hosted deployment smoke test: not run in this environment.
+**Code-bearing acceptance commit:** `bdefa1c71da347dff9ad1f1d55696f1188e13fb3`  
+**Recorded:** 10 October 2026
+
+- **Frontend TypeScript/production build: PASS** — [Frontend CI run](https://github.com/Karthik9151/NEXORION/actions/runs/38034621769).
+- **Chromium end-to-end suite: PASS** — [Frontend CI run](https://github.com/Karthik9151/NEXORION/actions/runs/38034621769). Coverage includes invalid-login handling, registration, switching between authorized workspace memberships, workspace-scoped graph writes, a registered synthetic simulation, persisted ORIGO verification, server-generated report preview, and mobile navigation/overflow.
+- **Backend tests and Ruff on Python 3.11: PASS** — [Backend CI run](https://github.com/Karthik9151/NEXORION/actions/runs/38034621760).
+- **Backend tests and Ruff on Python 3.12: PASS** — [Backend CI run](https://github.com/Karthik9151/NEXORION/actions/runs/38034621760).
+- **SQLite migration, PostgreSQL migration and API integration, and PostgreSQL downgrade/re-upgrade: PASS** — [Backend CI run](https://github.com/Karthik9151/NEXORION/actions/runs/38034621760).
+- **Source-level security review:** workspace membership, CSRF, scoped entity/relationship access, synthetic-only scenarios, verification-history consistency, and workspace-scoped reports were inspected alongside the automated tests.
+- **Hosted deployment smoke test / human visual review of the deployed service: NOT RUN.** This environment did not authenticate to or exercise a hosted NEXORION deployment. Complete these checks before describing the service as production-released.
+
+The latest code-bearing commit had all required automated CI checks green. The acceptance-document and workflow-filter updates also trigger a fresh PR-head CI run; merge remains gated on those fresh checks.
