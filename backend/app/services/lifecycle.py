@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.errors import ApiError
 from app.models import AuditEvent, Mission, new_id
-from app.stage5_models import MissionApproval, MissionTransitionEvent
+from app.stage5_models import MissionApproval, MissionPlan, MissionTransitionEvent
 
 CANONICAL_STATES = frozenset({
     "draft", "validating", "blocked_scope", "blocked_approval", "rejected", "ready",
@@ -66,13 +66,23 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def canonical_mission_digest(mission: Mission) -> str:
-    """Digest the persisted execution contract, not a model-generated plan."""
-    canonical = json.dumps({
+def canonical_plan_document(mission: Mission) -> dict[str, object]:
+    """Return the typed, canonical plan payload bound to approvals and jobs."""
+    return {
         "objective": mission.objective,
         "scope": mission.scope,
         "autonomy_tier": mission.autonomy_tier,
-    }, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    }
+
+
+def canonical_mission_digest(mission: Mission) -> str:
+    """Digest the persisted execution contract, not a model-generated plan."""
+    canonical = json.dumps(
+        canonical_plan_document(mission),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -125,15 +135,24 @@ def transition_mission(
             raise ApiError(409, "APPROVAL_AMBIGUOUS",
                 "Approval records are contradictory; queueing is blocked.")
         approval = approvals[0]
+        plan = db.scalar(select(MissionPlan).where(
+            MissionPlan.id == approval.plan_id,
+            MissionPlan.workspace_id == mission.workspace_id,
+            MissionPlan.mission_id == mission.id,
+            MissionPlan.plan_version == expected_version,
+        )) if approval.plan_id else None
         if (
             approval.requester_id != mission.requester_id
             or approval.approver_id is None
             or approval.approver_id == mission.requester_id
             or approval.approved_scope != mission.scope
             or approval.plan_digest != canonical_mission_digest(mission)
+            or plan is None
+            or plan.plan_digest != approval.plan_digest
+            or plan.plan_document != canonical_plan_document(mission)
         ):
             raise ApiError(409, "APPROVAL_BINDING_MISMATCH",
-                "Approval requester or scope does not match the mission.")
+                "Approval requester, scope, or immutable plan does not match the mission.")
         approval.consumed_at = now
     now = _now()
     terminal_at = now if target in TERMINAL_STATES else None
