@@ -22,7 +22,9 @@ from helpers import csrf_headers, mission_payload, prepare_approved_job, registe
 
 
 def main() -> int:
-    email = f"origo-e2e-{uuid4().hex}@example.test"
+    # ".test" is a reserved special-use TLD rejected by email-validator.
+    # This identity is test-only; the E2E flow never sends email.
+    email = f"origo-e2e-{uuid4().hex}@example.com"
     password = "A sufficiently long test password 123!"
     scenario_id = "scenario-auth-failure-v1"
     idempotency_key = f"origo-e2e-{uuid4().hex}"
