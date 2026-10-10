@@ -114,3 +114,35 @@ test("registration, workspace isolation, graph, approval gating, reporting, and 
   );
   expect(hasHorizontalOverflow).toBe(false);
 });
+
+test("Origo verification is requested from the UI and persists independently of simulation completion", async ({ page }) => {
+  const seedScript = fileURLToPath(new URL("./seed_origo_run.py", import.meta.url));
+  const seeded = JSON.parse(
+    execFileSync("python", [seedScript], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: process.env })
+  ) as { email: string; password: string; run_id: string };
+
+  await page.goto("/");
+  await page.getByLabel("Email address").fill(seeded.email);
+  await page.getByLabel("Password").fill(seeded.password);
+  await page.getByRole("button", { name: "Sign in securely", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Mission Center", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Evidence & Origo", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Independent Origo verification", exact: true })).toBeVisible();
+  await expect(page.getByText(seeded.run_id.slice(0, 18), { exact: true })).toBeVisible();
+
+  const verificationResponse = page.waitForResponse((response) =>
+    response.url().includes("/runs/" + seeded.run_id + "/verify") &&
+    response.request().method() === "POST"
+  );
+  await page.getByRole("button", { name: /Verify latest run with Origo/ }).click();
+  const response = await verificationResponse;
+  expect(response.status()).toBe(201);
+  expect((await response.json()).status).toBe("verified");
+  await expect(page.getByText("verified", { exact: true })).toBeVisible();
+
+  // Reload to prove the verdict comes from persisted API history, not local UI state.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Mission Center", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Evidence & Origo", exact: true }).click();
+  await expect(page.getByText("verified", { exact: true })).toBeVisible();
+});
