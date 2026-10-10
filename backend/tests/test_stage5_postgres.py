@@ -8,7 +8,6 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.db import Base
 from app.errors import ApiError
 from app.models import Mission, User, Workspace, WorkspaceMembership
 from app.services.lifecycle import transition_mission
