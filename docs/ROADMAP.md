@@ -113,7 +113,7 @@ See the Stage 2 index at docs/stage2/00_STAGE2_INDEX.md and the backend setup gu
 ## Stage 3 implementation status — digital world and deterministic simulation
 
 **Branch:** stage3-digital-world  
-**Status:** Implemented for review; automated CI and PostgreSQL/migration acceptance remain pending.
+**Status:** Verified for the defined Stage 3 synthetic-only scope on commit `04b13f4a3f21e07c242e268fe45ab7396ab4954a`; [GitHub Actions passed](https://github.com/Karthik9151/NEXORION/actions/runs/38026378118), including Python 3.11/3.12 tests and Ruff, SQLite migration round-trip, PostgreSQL 16 migration round-trip, and a PostgreSQL API smoke test. This is not production acceptance.
 
 - **Implemented in the branch:** synthetic entity and relationship routes; workspace isolation; versioned baselines with canonical digests; fixed suspicious-pattern and benign-control fixtures; deterministic simulation runs; idempotency-key enforcement; evidence provenance/digests; bounded mission-state transitions and audit events; API regression tests.
 - **Not included:** visual graph editing, arbitrary/custom executable scenarios, live asset discovery, external telemetry, network/host execution, full Origo verification, model-backed agents, durable distributed workflows, and isolated lab execution.
