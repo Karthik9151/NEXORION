@@ -165,7 +165,8 @@ def simulate_mission(
             "The mission must explicitly request the simulate_synthetic autonomy tier.",
         )
     if mission.scope.get("mode") != "synthetic_only":
-        raise ApiError(403, "SYNTHETIC_SCOPE_REQUIRED", "Only synthetic-only missions can run here.")
+        raise ApiError(403, "SYNTHETIC_SCOPE_REQUIRED",
+            "Only synthetic-only missions can run here.")
     if payload.scenario_id not in mission.scope.get("scenario_ids", []):
         raise ApiError(
             403,
@@ -174,7 +175,8 @@ def simulate_mission(
         )
     fixture = get_fixture(payload.scenario_id)
     if fixture is None or payload.scenario_id not in SCENARIO_REGISTRY:
-        raise ApiError(404, "SCENARIO_NOT_FOUND", "The requested fixed synthetic scenario was not found.")
+        raise ApiError(404, "SCENARIO_NOT_FOUND",
+            "The requested fixed synthetic scenario was not found.")
 
     baseline = db.scalar(
         select(WorldSnapshot)
@@ -183,7 +185,8 @@ def simulate_mission(
         .limit(1)
     )
     if baseline is None:
-        raise ApiError(409, "BASELINE_REQUIRED", "Capture a versioned world baseline before simulation.")
+        raise ApiError(409, "BASELINE_REQUIRED",
+            "Capture a versioned world baseline before simulation.")
     if digest(baseline.snapshot) != baseline.graph_digest:
         raise ApiError(
             409,
@@ -198,8 +201,10 @@ def simulate_mission(
         **analysis,
         "verification": verification,
         "simulator_version": SIMULATOR_VERSION,
-        "capabilities_used": ["read_registered_synthetic_fixture", "deterministic_rule_evaluation", "record_synthetic_evidence"],
-        "capabilities_not_available": ["external_network", "host_commands", "real_credentials", "live_system_mutation"],
+        "capabilities_used": ["read_registered_synthetic_fixture",
+            "deterministic_rule_evaluation", "record_synthetic_evidence"],
+        "capabilities_not_available": ["external_network", "host_commands",
+            "real_credentials", "live_system_mutation"],
     }
     input_digest = digest(
         {
@@ -256,7 +261,8 @@ def simulate_mission(
     db.add(evidence_record)
 
     previous_state = mission.state
-    transitions = ["running", "verifying", "succeeded" if verification["status"] == "verified" else "inconclusive"]
+    transitions = ["running", "verifying",
+        "succeeded" if verification["status"] == "verified" else "inconclusive"]
     for next_state in transitions:
         db.add(_audit_transition(request, user, mission, previous_state, next_state))
         mission.state = next_state
