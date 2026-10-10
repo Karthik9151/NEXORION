@@ -100,6 +100,12 @@ The `stage4-implementation` working branch integrates the visual workspace with 
 
 **Close-out is still pending:** the acceptance record does not document a hosted smoke test or human visual sign-off; the latest branch-head CI must be rechecked before merge. Same-origin deployment, production owner bootstrap, and the full API suite on PostgreSQL 16 are separate readiness blockers. No Stage 4 merge SHA is recorded here because a merge has not been verified. See the [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md). Stage 4 remains synthetic-only and is not a production release.
 
+## Stage 5 — Governance and durable workflow implementation
+
+Stage 5 is under implementation on `stage5-implementation`, based on the validated `main` commit recorded in the [Stage 5 status report](docs/stage5/01_IMPLEMENTATION_STATUS.md). The branch adds server-owned lifecycle commands, scoped approval records, durable synthetic jobs, lease/recovery primitives, and Origo-owned terminal outcomes. **It is not yet accepted or ready to merge**: the worker loop, periodic recovery, classified retries, complete cancellation/termination proof, and exact branch-head CI evidence remain open. OD-003 and OD-015 are still owner decisions. No deployment or paid resource is authorized.
+
+- [Stage 5 implementation status, migration notes, test map and acceptance checklist](docs/stage5/01_IMPLEMENTATION_STATUS.md)
+
 ## Core documentation
 
 - [Implementation tracker, $0 plan, blockers, and acceptance gates](docs/stage4/03_IMPLEMENTATION_TRACKER.md)
