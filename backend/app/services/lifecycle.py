@@ -109,6 +109,7 @@ def transition_mission(
             raise ApiError(409, "APPROVAL_BINDING_MISMATCH", "Approval requester or scope does not match the mission.")
         approval.consumed_at = now
     now = _now()
+    terminal_at = now if target in TERMINAL_STATES else None
     result = db.execute(update(Mission).where(
         Mission.id == mission.id,
         Mission.workspace_id == mission.workspace_id,
@@ -118,6 +119,8 @@ def transition_mission(
         state=target,
         version=Mission.version + 1,
         updated_at=now,
+        terminal_at=terminal_at,
+        completion_reason=reason.strip() if target in TERMINAL_STATES else None,
     ))
     if result.rowcount != 1:
         db.rollback()
