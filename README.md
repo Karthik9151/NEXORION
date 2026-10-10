@@ -4,9 +4,7 @@
 
 NEXORION is a proposed persistent digital environment in which a researcher can explore a modeled world, investigate security evidence, develop hypotheses, run reproducible simulations, and independently verify findings. The concept combines a stateful world model, coordinated specialist roles, explicit governance, and a future isolated lab for separately authorized experiments.
 
-> **Project status:** Stage 3's synthetic digital-world and deterministic-simulation backend slice is verified by GitHub Actions on `stage3-digital-world` (Python 3.11/3.12, Ruff, fresh SQLite migration round-trip, PostgreSQL 16 migration round-trip, and PostgreSQL API smoke test). This is not production-ready. The visual workspace, full Origo verification, general durable workflows, model-backed agents, and isolated lab remain future work. [Stage 3 verification run](https://github.com/Karthik9151/NEXORION/actions/runs/38026378118).
-
-## The three identities
+> **Project status (10 October 2026):** Stage 4 work is recorded on the `stage4-implementation` branch, not as a production release. The Stage 4 acceptance record documents passing frontend build and Playwright checks, backend tests and Ruff on Python 3.11/3.12, and PostgreSQL 16 migration/API checks for the recorded code-bearing commit. Re-check CI on the final pull-request head before merge. A hosted smoke test and human visual sign-off have not been performed; production hosting is blocked by same-origin cookie/CSRF handling, missing owner bootstrap, and the need for the full API suite on PostgreSQL 16. See the [Stage 4 acceptance record](docs/stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md) and [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md). This project follows a hard **$0 spend ceiling**: local development and CI first, no paid infrastructure or billable model APIs, and no payment card on hosting accounts.
 
 - **NEXORION — the digital universe:** the persistent environment and world model for entities, relationships, missions, scenarios, evidence, and research history.
 - **NEXARCH — the central intelligence:** the primary mission reasoning and orchestration layer. It decomposes user intent into bounded work and coordinates specialists; it cannot authorize its own consequential actions.
@@ -96,6 +94,8 @@ Only registered synthetic fixtures can execute. This branch exposes no network s
 
 ## Core documentation
 
+- [Implementation tracker, $0 plan, blockers, and acceptance gates](docs/stage4/03_IMPLEMENTATION_TRACKER.md)
+- [Stage 4 acceptance and security verification](docs/stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md)
 - [Concept and scope](docs/CONCEPT.md)
 - [System architecture](docs/ARCHITECTURE.md)
 - [Agent registry](docs/AGENT_REGISTRY.md)
@@ -137,11 +137,11 @@ See [technology decision records](docs/stage1/05_TECHNOLOGY_DECISION_RECORDS.md)
 
 ## Development status and setup
 
-Executable backend source, a Python dependency manifest, an initial Alembic schema migration, API tests, and backend CI configuration now exist on the stage2 branch. Local setup and test instructions are documented in [backend/README.md](backend/README.md). This first foundation is not production-ready; CI, PostgreSQL integration, production identity/onboarding, and operational release gates must be verified before deployment.
+The repository contains the Stage 2 API foundation, Stage 3 synthetic world/simulation workflow, and Stage 4 workspace UI, Origo verification, and report-generation work on the `stage4-implementation` branch. Use [backend local setup](backend/README.md) and the [Stage 4 acceptance record](docs/stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md) for commands and the recorded automated evidence. The final PR-head CI result still needs to be checked before merge. This is not a production release: owner bootstrap, same-origin frontend/API deployment, complete PostgreSQL 16 API-suite coverage, hosted smoke testing, and human visual sign-off remain open. The [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md) is the single working status register and retains the hard $0 spend cap.
 
 ## Roadmap
 
-The intended sequence is: reconcile the blueprint; accept contracts and guardrails; implement the persistent world and mission foundation; build the synthetic authentication-failure vertical slice; add independent verification and evidence handling; introduce durable orchestration and bounded agent roles; then evaluate model-backed interaction and a separately isolated lab. Operational hardening and scaling should follow demonstrated requirements. See [roadmap](docs/ROADMAP.md) and [Stage 1 acceptance](docs/stage1/07_REQUIREMENT_TO_TEST_TRACEABILITY.md).
+The intended sequence is: reconcile the blueprint; accept contracts and guardrails; implement the persistent world and mission foundation; build the synthetic authentication-failure vertical slice; add independent verification and evidence handling; introduce durable orchestration and bounded agent roles; then evaluate model-backed interaction and a separately isolated lab. Operational hardening and scaling should follow demonstrated requirements. See [roadmap](docs/ROADMAP.md), [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md), and [Stage 1 acceptance](docs/stage1/07_REQUIREMENT_TO_TEST_TRACEABILITY.md).
 
 ## Licensing and contributions
 
