@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.errors import ApiError
 from app.models import AuditEvent, Mission
-from app.services.lifecycle import canonical_mission_digest, transition_mission
+from app.services.lifecycle import (\n    canonical_mission_digest,\n    canonical_plan_document,\n    transition_mission,\n)
 from app.simulation import SCENARIO_REGISTRY
-from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt
+from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt, MissionPlan
 
 
 def _now() -> datetime:
@@ -45,6 +45,12 @@ def claim_next_job(
     approval_expiry = None if approval is None else approval.expires_at
     if approval_expiry is not None and approval_expiry.tzinfo is None:
         approval_expiry = approval_expiry.replace(tzinfo=timezone.utc)
+    plan = db.scalar(select(MissionPlan).where(
+        MissionPlan.id == job.plan_id,
+        MissionPlan.workspace_id == job.workspace_id,
+        MissionPlan.mission_id == job.mission_id,
+        MissionPlan.plan_version == job.plan_version,
+    )) if job.plan_id else None
     valid = (
         mission is not None and mission.state == "queued"
         and mission.autonomy_tier == "simulate_synthetic"
@@ -53,11 +59,15 @@ def claim_next_job(
         and job.scenario_id in SCENARIO_REGISTRY
         and canonical_mission_digest(mission) == job.plan_digest
         and mission.version == job.plan_version + 1
+        and plan is not None
+        and plan.plan_digest == job.plan_digest
+        and plan.plan_document == canonical_plan_document(mission)
         and approval is not None and approval.decision == "approved"
         and approval.action_class == "synthetic_simulation"
         and approval.requester_id == mission.requester_id
         and approval.approver_id is not None
         and approval.approver_id != mission.requester_id
+        and approval.plan_id == job.plan_id
         and approval.plan_digest == job.plan_digest
         and approval.plan_version == job.plan_version
         and approval.approved_scope == mission.scope
