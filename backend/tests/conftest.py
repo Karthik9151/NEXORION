@@ -1,4 +1,6 @@
 import os
+
+import pytest
 from collections.abc import Iterator
 
 from fastapi.testclient import TestClient
