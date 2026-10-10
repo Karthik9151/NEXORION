@@ -12,7 +12,14 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_current_user, get_db, require_csrf, require_workspace_membership
 from app.errors import ApiError
 from app.models import (
-    AuditEvent, EvidenceRecord, Mission, OrigoVerification, SimulationRun, User, WorldSnapshot, new_id,
+    AuditEvent,
+    EvidenceRecord,
+    Mission,
+    OrigoVerification,
+    SimulationRun,
+    User,
+    WorldSnapshot,
+    new_id,
 )
 from app.origo import LIMITATIONS, ORIGO_VERIFIER_VERSION, evaluate_persisted_run
 from app.schemas import VerificationHistoryPublic, VerificationPublic
@@ -23,11 +30,15 @@ _IDEMPOTENCY_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
 _SCENARIO_META = {
     "scenario-auth-failure-v1": {
         "name": "Authentication Failure Pattern", "category": "IDENTITY",
-        "description": "Five synthetic failures followed by a success within the fixed rule window.",
+        "description": (
+            "Five synthetic failures followed by a success within the fixed rule window."
+        ),
     },
     "scenario-auth-benign-control-v1": {
         "name": "Benign Control Sequence", "category": "CONTROL",
-        "description": "A registered synthetic control sequence with failures and no following success.",
+        "description": (
+            "A registered synthetic control sequence with failures and no following success."
+        ),
     },
 }
 
@@ -114,7 +125,8 @@ def _build_report(db: Session, workspace_id: str, mission: Mission) -> dict[str,
                 "origo_verification": None if run.id not in latest_by_run else {
                     "id": latest_by_run[run.id].id, "status": latest_by_run[run.id].status,
                     "verifier_version": latest_by_run[run.id].verifier_version,
-                    "checks": latest_by_run[run.id].checks, "reasons": latest_by_run[run.id].reasons,
+                    "checks": latest_by_run[run.id].checks,
+                    "reasons": latest_by_run[run.id].reasons,
                     "discrepancies": latest_by_run[run.id].discrepancies,
                     "created_at": latest_by_run[run.id].created_at.isoformat(),
                 },
@@ -134,14 +146,16 @@ def _build_report(db: Session, workspace_id: str, mission: Mission) -> dict[str,
                 "id": item.id, "run_id": item.run_id, "status": item.status,
                 "verifier_version": item.verifier_version, "checks": item.checks,
                 "reasons": item.reasons, "discrepancies": item.discrepancies,
-                "evidence_ids": item.evidence_ids, "evidence_fingerprints": item.evidence_fingerprints,
+                "evidence_ids": item.evidence_ids,
+                "evidence_fingerprints": item.evidence_fingerprints,
                 "created_at": item.created_at.isoformat(),
             } for item in verifications
         ],
         "limitations": list(LIMITATIONS) + [
             "Only persisted synthetic research records are represented.",
             "Historical fixture-consistency fields are not Origo verification history.",
-            "A missing verification record means verification was not requested or was not recorded.",
+            "A missing verification record means verification was not requested "
+            "or was not recorded.",
         ],
     }
 
@@ -166,7 +180,8 @@ def _markdown(report: dict[str, object]) -> str:
         lines.extend([
             f"- Baseline ID: {baseline['id']}", f"- Sequence: {baseline['sequence']}",
             f"- Graph digest (SHA-256): {baseline['graph_digest']}",
-            f"- Entities: {baseline['entity_count']}", f"- Relationships: {baseline['relationship_count']}",
+            f"- Entities: {baseline['entity_count']}",
+            f"- Relationships: {baseline['relationship_count']}",
             f"- Captured at: {baseline['created_at']}",
         ])
     lines.extend(["", "## Simulation runs", ""])
@@ -176,18 +191,27 @@ def _markdown(report: dict[str, object]) -> str:
         lines.append("No persisted simulation runs are available.")
     for run in runs:
         verification = run["origo_verification"]
-        verification_status = verification["status"] if isinstance(verification, dict) else "not requested"
+        verification_status = (
+            verification["status"]
+            if isinstance(verification, dict)
+            else "not requested"
+        )
         lines.extend([
             f"### Run {run['id']}", "", f"- Scenario: {run['scenario_id']}",
             f"- Execution status: {run['execution_status']}", f"- Outcome: {run['outcome']}",
             f"- Origo verification: {verification_status}", f"- Baseline: {run['baseline_id']}",
-            f"- Input fingerprint: {run['input_digest']}", f"- Output fingerprint: {run['output_digest']}",
+            f"- Input fingerprint: {run['input_digest']}",
+            f"- Output fingerprint: {run['output_digest']}",
             f"- Summary: {str(run['summary'] or 'No persisted summary').replace(chr(10), ' ')}",
-            "- Evidence references: " + (", ".join(run["evidence_ids"]) if run["evidence_ids"] else "none"),
+            "- Evidence references: "
+            + (", ".join(run["evidence_ids"]) if run["evidence_ids"] else "none"),
         ])
         if isinstance(verification, dict):
             lines.extend(["", "Verification reasons:"])
-            lines.extend(f"- {str(value).replace(chr(10), ' ')}" for value in verification["reasons"])
+            lines.extend(
+                f"- {str(value).replace(chr(10), ' ')}"
+                for value in verification["reasons"]
+            )
             for discrepancy in verification["discrepancies"]:
                 lines.append(f"- Discrepancy: {str(discrepancy)}")
         lines.append("")
@@ -210,7 +234,10 @@ def _markdown(report: dict[str, object]) -> str:
     if not history:
         lines.append("No Origo verification attempts have been recorded.")
     for item in history:
-        lines.append(f"- {item['created_at']} · run {item['run_id']} · {item['status']} · verifier {item['verifier_version']}")
+        lines.append(
+            f"- {item['created_at']} · run {item['run_id']} · {item['status']} · "
+            f"verifier {item['verifier_version']}"
+        )
         for reason in item["reasons"]:
             lines.append(f"  - {str(reason).replace(chr(10), ' ')}")
     lines.extend(["", "## Limitations", ""])
@@ -292,8 +319,11 @@ def verify_run(
             if existing is not None:
                 response.status_code = 200
                 return _verification_public(existing)
-        raise ApiError(409, "VERIFICATION_CONFLICT",
-            "The verification request conflicted with another operation; retry with a new key.") from exc
+        raise ApiError(
+            409,
+            "VERIFICATION_CONFLICT",
+            "The verification request conflicted with another operation; retry with a new key.",
+        ) from exc
     db.refresh(attempt)
     return _verification_public(attempt)
 
@@ -335,4 +365,7 @@ def mission_report_markdown(
     require_workspace_membership(db, user_id=user.id, workspace_id=workspace_id)
     assert workspace_id is not None
     mission = _require_mission(db, workspace_id, mission_id)
-    return PlainTextResponse(_markdown(_build_report(db, workspace_id, mission)), media_type="text/markdown")
+    return PlainTextResponse(
+        _markdown(_build_report(db, workspace_id, mission)),
+        media_type="text/markdown",
+    )
