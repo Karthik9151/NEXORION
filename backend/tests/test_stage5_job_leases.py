@@ -13,8 +13,9 @@ from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt
 
 def _seed_job(db: Session) -> tuple[Mission, MissionJob]:
     user = User(email="lease-test@example.test", password_hash="test-hash")
+    approver = User(email="lease-approver@example.test", password_hash="test-hash")
     workspace = Workspace(name="lease-test")
-    db.add_all([user, workspace])
+    db.add_all([user, approver, workspace])
     db.flush()
     db.add(WorkspaceMembership(user_id=user.id, workspace_id=workspace.id, role="owner"))
     mission = Mission(
@@ -30,7 +31,7 @@ def _seed_job(db: Session) -> tuple[Mission, MissionJob]:
     digest = canonical_mission_digest(mission)
     approval = MissionApproval(
         workspace_id=workspace.id, mission_id=mission.id, requester_id=user.id,
-        approver_id=user.id, action_class="synthetic_simulation", approved_scope=mission.scope,
+        approver_id=approver.id, action_class="synthetic_simulation", approved_scope=mission.scope,
         constraints={"synthetic_only": True}, plan_digest=digest, plan_version=1,
         decision="approved", decision_reason="test", created_at=now,
         expires_at=now + timedelta(minutes=10), consumed_at=now,
