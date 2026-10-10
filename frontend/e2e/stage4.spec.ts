@@ -1,10 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const password = "Nexorion-E2E-Password-2026";
 
-async function registerWorkspace(page: Parameters<typeof test>[0] extends never ? never : any, email: string) {
+async function registerWorkspace(page: Page, email: string) {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   await page.getByRole("button", { name: "Create account", exact: true }).click();
@@ -15,9 +15,10 @@ async function registerWorkspace(page: Parameters<typeof test>[0] extends never 
   await expect(page.getByRole("heading", { name: "Mission Center" })).toBeVisible();
 }
 
-async function addEntity(page: any, name: string) {
+async function addEntity(page: Page, name: string) {
   await page.getByRole("button", { name: "Digital World", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Digital World Explorer" })).toBeVisible();
+  await expect(page.getByText("Primary Only Entity", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Add entity", exact: true }).first().click();
   await page.getByLabel("Entity name").fill(name);
   await page.getByLabel("Entity type").selectOption("service");
@@ -69,6 +70,7 @@ test("registration, workspace isolation, graph, simulation, verification, report
   await expect(page.getByText("Secondary Only Entity", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Digital World", exact: true }).click();
   await expect(page.getByText("Primary Only Entity", { exact: true })).toBeVisible();
+  await expect(page.getByText("Secondary Only Entity", { exact: true })).toHaveCount(0);
 
   // Create a mission and execute only a registered synthetic scenario.
   await page.getByRole("button", { name: "Mission Center", exact: true }).click();
