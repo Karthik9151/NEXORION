@@ -225,3 +225,25 @@ class SimulationRunPublic(StrictModel):
     evidence: list[EvidencePublic]
     started_at: datetime
     completed_at: datetime
+
+
+class VerificationPublic(StrictModel):
+    id: str
+    schema_version: str
+    workspace_id: str
+    mission_id: str
+    run_id: str
+    status: Literal["verified", "failed", "disputed", "inconclusive"]
+    verifier_version: str
+    checks: list[dict[str, object]]
+    reasons: list[str]
+    discrepancies: list[dict[str, object]]
+    evidence_ids: list[str]
+    evidence_fingerprints: dict[str, str]
+    idempotency_key: str | None
+    created_at: datetime
+
+
+class VerificationHistoryPublic(StrictModel):
+    items: list[VerificationPublic]
+    latest: VerificationPublic | None

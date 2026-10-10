@@ -196,10 +196,11 @@ def simulate_mission(
 
     started_at = utcnow()
     analysis = evaluate_fixture(payload.scenario_id, fixture)
-    verification = verify_fixture_result(payload.scenario_id, fixture, analysis)
+    # This bounded fixture consistency check is not an Origo verification attempt.
+    fixture_consistency = verify_fixture_result(payload.scenario_id, fixture, analysis)
     result = {
         **analysis,
-        "verification": verification,
+        "fixture_consistency": fixture_consistency,
         "simulator_version": SIMULATOR_VERSION,
         "capabilities_used": ["read_registered_synthetic_fixture",
             "deterministic_rule_evaluation", "record_synthetic_evidence"],
@@ -218,11 +219,15 @@ def simulate_mission(
     run_id = new_id()
     source_ref = fixture["source_ref"]
     evidence_payload = {
+        "payload_schema_version": "1.0",
         "scenario_id": payload.scenario_id,
+        "fixture_version": fixture["fixture_version"],
         "outcome": analysis["outcome"],
         "supporting_event_ids": analysis["supporting_event_ids"],
         "event_count": analysis["event_count"],
         "rule_set_version": RULE_SET_VERSION,
+        # Persist event detail so Origo can evaluate evidence without reloading the fixture.
+        "events": fixture["events"],
     }
     evidence_record = EvidenceRecord(
         id=new_id(),
@@ -261,8 +266,8 @@ def simulate_mission(
     db.add(evidence_record)
 
     previous_state = mission.state
-    transitions = ["running", "verifying",
-        "succeeded" if verification["status"] == "verified" else "inconclusive"]
+    # Mission lifecycle reflects execution completion, not the separate Origo verdict.
+    transitions = ["running", "succeeded"]
     for next_state in transitions:
         db.add(_audit_transition(request, user, mission, previous_state, next_state))
         mission.state = next_state
