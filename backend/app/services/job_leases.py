@@ -12,6 +12,7 @@ from app.errors import ApiError
 from app.models import AuditEvent, Mission, new_id
 from app.services.lifecycle import canonical_mission_digest, transition_mission
 from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt
+from app.simulation import SCENARIO_REGISTRY
 
 
 def _now() -> datetime:
@@ -42,6 +43,7 @@ def claim_next_job(db: Session, *, worker_id: str, lease_seconds: int = 30) -> M
         and mission.autonomy_tier == "simulate_synthetic"
         and mission.scope.get("mode") == "synthetic_only"
         and job.scenario_id in mission.scope.get("scenario_ids", [])
+        and job.scenario_id in SCENARIO_REGISTRY
         and canonical_mission_digest(mission) == job.plan_digest
         and mission.version == job.plan_version + 1
         and approval is not None and approval.decision == "approved"
