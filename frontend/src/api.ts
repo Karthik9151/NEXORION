@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "/api" : "")).replace(/\/$/, "");
 
 export interface Workspace { id: string; name: string; role: string; created_at?: string; }
 export interface User { id: string; email: string; created_at?: string; }
