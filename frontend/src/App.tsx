@@ -586,6 +586,8 @@ function App() {
       const history = await api.verificationHistory(workspaceId, run.mission_id, run.id)
         .catch(() => ({ items: [attempt], latest: attempt }));
       setVerificationHistoryByRun((current) => ({ ...current, [run.id]: history }));
+      const refreshedMissions = await api.missions(workspaceId);
+      setMissions(refreshedMissions);
       notify("Origo verification recorded: " + attempt.status + ".");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Origo verification could not be completed.";
