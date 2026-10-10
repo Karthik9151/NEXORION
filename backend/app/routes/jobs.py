@@ -83,6 +83,12 @@ def enqueue_job(
         return _public(existing)
     if mission.state != "planned":
         raise ApiError(409, "MISSION_NOT_PLANNED", "Only a planned mission can be queued.")
+    active_job = db.scalar(select(MissionJob.id).where(
+        MissionJob.workspace_id == workspace_id, MissionJob.mission_id == mission.id,
+        MissionJob.status.in_(["queued", "claimed", "running", "cancelling", "uncertain", "review_required"]),
+    ))
+    if active_job is not None:
+        raise ApiError(409, "MISSION_JOB_ALREADY_ACTIVE", "A mission may have only one active or uncertain job.")
     if mission.autonomy_tier != "simulate_synthetic" or mission.scope.get("mode") != "synthetic_only":
         raise ApiError(403, "SYNTHETIC_SCOPE_REQUIRED", "Only explicitly synthetic missions may be queued.")
     if payload.scenario_id not in mission.scope.get("scenario_ids", []) or payload.scenario_id not in SCENARIO_REGISTRY:
@@ -143,6 +149,15 @@ def enqueue_job(
         db.commit()
         db.refresh(job)
         return _public(job)
+    except ApiError as exc:
+        db.rollback()
+        existing = db.scalar(select(MissionJob).where(
+            MissionJob.workspace_id == workspace_id, MissionJob.mission_id == mission.id,
+            MissionJob.idempotency_key == payload.idempotency_key,
+        ))
+        if existing is not None and existing.scenario_id == payload.scenario_id:
+            return _public(existing)
+        raise exc
     except IntegrityError as exc:
         db.rollback()
         # A concurrent identical request may have won the unique-key race.
