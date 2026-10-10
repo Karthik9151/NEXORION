@@ -26,10 +26,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    with op.batch_alter_table("mission_jobs") as batch_op:
-        batch_op.alter_column(
-            "outcome",
-            existing_type=sa.String(length=64),
-            type_=sa.String(length=32),
-            existing_nullable=True,
-        )
+    # Keep the wider column: narrowing could fail or lose meaning when a
+    # persisted outcome exceeds 32 characters. A 64-character column remains
+    # compatible with the prior schema and is safe to leave widened on rollback.
+    pass
