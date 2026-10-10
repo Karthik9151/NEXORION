@@ -23,7 +23,7 @@ from app.models import (
 )
 from app.origo import LIMITATIONS, ORIGO_VERIFIER_VERSION, evaluate_persisted_run
 from app.schemas import VerificationHistoryPublic, VerificationPublic
-from app.simulation import SCENARIO_REGISTRY, RULE_SET_VERSION
+from app.simulation import RULE_SET_VERSION, SCENARIO_REGISTRY
 
 router = APIRouter(tags=["research"])
 _IDEMPOTENCY_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
