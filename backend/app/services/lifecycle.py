@@ -84,18 +84,24 @@ def transition_mission(
     """Apply one allowed transition using compare-and-swap and an audit record."""
     target = COMMAND_TARGETS.get(command)
     if target is None:
-        raise ApiError(400, "UNKNOWN_MISSION_COMMAND", "The requested mission command is not supported.")
+        raise ApiError(400, "UNKNOWN_MISSION_COMMAND",
+            "The requested mission command is not supported.")
     if command.startswith("verified_") or command.startswith("verification_"):
         if not verifier_authorized:
-            raise ApiError(403, "VERIFIER_AUTHORITY_REQUIRED", "Only the trusted verification path may set verification outcomes.")
+            raise ApiError(403, "VERIFIER_AUTHORITY_REQUIRED",
+                "Only the trusted verification path may set verification outcomes.")
     if mission.state not in CANONICAL_STATES:
-        raise ApiError(409, "UNKNOWN_MISSION_STATE", "The stored mission state is not recognized; transition was blocked.")
+        raise ApiError(409, "UNKNOWN_MISSION_STATE",
+            "The stored mission state is not recognized; transition was blocked.")
     if mission.state in TERMINAL_STATES:
-        raise ApiError(409, "MISSION_TERMINAL", "Terminal missions cannot be changed through normal workflow commands.")
+        raise ApiError(409, "MISSION_TERMINAL",
+            "Terminal missions cannot be changed through normal workflow commands.")
     if target not in ALLOWED_TRANSITIONS.get(mission.state, set()):
-        raise ApiError(409, "ILLEGAL_MISSION_TRANSITION", "The requested command is not allowed from the current mission state.")
+        raise ApiError(409, "ILLEGAL_MISSION_TRANSITION",
+            "The requested command is not allowed from the current mission state.")
     if expected_version != mission.version:
-        raise ApiError(409, "MISSION_VERSION_CONFLICT", "The mission changed; reload its current state before retrying.")
+        raise ApiError(409, "MISSION_VERSION_CONFLICT",
+            "The mission changed; reload its current state before retrying.")
     if not reason.strip() or len(reason.strip()) > 200:
         raise ApiError(422, "TRANSITION_REASON_REQUIRED", "Provide a concise transition reason.")
     if target == "queued":
@@ -113,9 +119,11 @@ def transition_mission(
         )).all()
         # OD-003/OD-015 remain open. Until policy/roles are owner-approved, fail closed.
         if not approvals:
-            raise ApiError(409, "APPROVAL_REQUIRED", "No current, unconsumed approval is bound to this mission version and action.")
+            raise ApiError(409, "APPROVAL_REQUIRED",
+                "No current, unconsumed approval is bound to this mission version and action.")
         if len(approvals) != 1:
-            raise ApiError(409, "APPROVAL_AMBIGUOUS", "Approval records are contradictory; queueing is blocked.")
+            raise ApiError(409, "APPROVAL_AMBIGUOUS",
+                "Approval records are contradictory; queueing is blocked.")
         approval = approvals[0]
         if (
             approval.requester_id != mission.requester_id
@@ -124,7 +132,8 @@ def transition_mission(
             or approval.approved_scope != mission.scope
             or approval.plan_digest != canonical_mission_digest(mission)
         ):
-            raise ApiError(409, "APPROVAL_BINDING_MISMATCH", "Approval requester or scope does not match the mission.")
+            raise ApiError(409, "APPROVAL_BINDING_MISMATCH",
+                "Approval requester or scope does not match the mission.")
         approval.consumed_at = now
     now = _now()
     terminal_at = now if target in TERMINAL_STATES else None
@@ -142,7 +151,8 @@ def transition_mission(
     ))
     if result.rowcount != 1:
         db.rollback()
-        raise ApiError(409, "MISSION_VERSION_CONFLICT", "A concurrent transition won; reload the mission.")
+        raise ApiError(409, "MISSION_VERSION_CONFLICT",
+            "A concurrent transition won; reload the mission.")
     new_version = expected_version + 1
     db.add(MissionTransitionEvent(
         id=new_id(), workspace_id=mission.workspace_id, mission_id=mission.id,
