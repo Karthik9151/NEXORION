@@ -173,3 +173,49 @@ def reconcile_expired_leases(db: Session) -> int:
         count += 1
     db.flush()
     return count
+
+
+def confirm_job_stopped(
+    db: Session, *, job_id: str, worker_id: str, evidence_refs: list[str] | None = None,
+) -> MissionJob:
+    """Persist an explicit worker stop acknowledgement; lease timeout is not an acknowledgement."""
+    job = db.scalar(select(MissionJob).where(MissionJob.id == job_id).with_for_update())
+    if job is None:
+        raise ApiError(404, "JOB_NOT_FOUND", "The requested job was not found.")
+    if job.lease_owner != worker_id or job.status != "cancelling" or job.cancel_requested_at is None:
+        raise ApiError(409, "STOP_ACKNOWLEDGEMENT_NOT_EXPECTED", "This worker does not own a cancellation-requested job.")
+    now = _now()
+    attempt = db.scalar(select(MissionJobAttempt).where(
+        MissionJobAttempt.job_id == job.id,
+        MissionJobAttempt.attempt_number == job.attempt_count,
+    ).with_for_update())
+    if attempt is None:
+        raise ApiError(409, "ATTEMPT_RECORD_MISSING", "Cannot establish safe termination without an attempt record.")
+    attempt.status = "cancelled"
+    attempt.ended_at = now
+    attempt.termination_confirmed = True
+    if evidence_refs:
+        attempt.evidence_refs = list(dict.fromkeys([*attempt.evidence_refs, *evidence_refs]))[:100]
+        job.evidence_refs = list(dict.fromkeys([*job.evidence_refs, *evidence_refs]))[:100]
+    job.status = "cancelled"
+    job.outcome = "worker_stop_acknowledged"
+    job.lease_owner = None
+    job.lease_expires_at = None
+    job.updated_at = now
+    mission = db.scalar(select(Mission).where(
+        Mission.id == job.mission_id, Mission.workspace_id == job.workspace_id,
+    ).with_for_update())
+    if mission is not None and mission.state == "cancelling":
+        transition_mission(
+            db, mission=mission, actor_id=None, actor_kind="worker",
+            command="cancelled", expected_version=mission.version,
+            reason="worker explicitly confirmed safe termination",
+            request_id=f"worker:{worker_id}",
+        )
+    db.add(AuditEvent(
+        actor_id=None, workspace_id=job.workspace_id, action="mission.job_termination_confirmed",
+        resource_type="mission_job", resource_id=job.id, decision="allow",
+        reason="worker_stop_acknowledged", request_id=f"worker:{worker_id}",
+    ))
+    db.flush()
+    return job
