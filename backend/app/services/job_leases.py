@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.errors import ApiError
-from app.models import AuditEvent, Mission, new_id
+from app.models import AuditEvent, Mission
 from app.services.lifecycle import canonical_mission_digest, transition_mission
 from app.stage5_models import MissionApproval, MissionJob, MissionJobAttempt
 from app.simulation import SCENARIO_REGISTRY
