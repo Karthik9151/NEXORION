@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.config import Settings
 from app.db import build_engine, build_session_factory
 from app.main import create_app
-from tests.helpers import csrf_headers
+from tests.helpers import csrf_headers, prepare_approved_job
 
 
 @pytest.mark.skipif(
@@ -69,12 +69,16 @@ def test_postgres_auth_mission_baseline_and_simulation_round_trip() -> None:
                 headers=csrf_headers(client, workspace_id),
             )
             assert baseline.status_code == 201, baseline.text
+            simulation_key = f"pg-integration-{uuid4().hex}"
+            prepare_approved_job(
+                client, workspace_id, mission_id, "scenario-auth-failure-v1", simulation_key,
+            )
 
             simulation = client.post(
                 f"/v1/missions/{mission_id}/simulate",
                 headers={
                     **csrf_headers(client, workspace_id),
-                    "Idempotency-Key": f"pg-integration-{uuid4().hex}",
+                    "Idempotency-Key": simulation_key,
                 },
                 json={"scenario_id": "scenario-auth-failure-v1"},
             )

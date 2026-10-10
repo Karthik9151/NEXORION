@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.simulation import SCENARIO_REGISTRY, evaluate_fixture, get_fixture, verify_fixture_result
-from tests.helpers import csrf_headers, mission_payload, register
+from tests.helpers import csrf_headers, mission_payload, prepare_approved_job, register
 
 
 def _create_simulation_mission(client: TestClient, workspace_id: str,
@@ -179,6 +179,10 @@ def test_synthetic_simulation_is_reproducible_evidenced_and_idempotent(client: T
     )
     assert baseline.status_code == 201, baseline.text
 
+    prepare_approved_job(
+        client, workspace_id, mission_id, "scenario-auth-failure-v1",
+        "stage3-repeatable-run-001",
+    )
     headers = {
         **csrf_headers(client, workspace_id),
         "Idempotency-Key": "stage3-repeatable-run-001",
@@ -219,7 +223,7 @@ def test_synthetic_simulation_is_reproducible_evidenced_and_idempotent(client: T
     mission = client.get(
         f"/v1/missions/{mission_id}", headers={"X-Workspace-ID": workspace_id}
     )
-    assert mission.json()["state"] == "succeeded"
+    assert mission.json()["state"] == "verifying"
 
     listed = client.get(
         f"/v1/missions/{mission_id}/runs", headers={"X-Workspace-ID": workspace_id}

@@ -3,12 +3,13 @@
 import logging
 import re
 from collections.abc import Callable
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -19,7 +20,7 @@ from app.config import Settings, get_settings
 from app.db import build_engine, build_session_factory
 from app.dependencies import get_db
 from app.errors import ApiError
-from app.routes import auth, missions, research, simulation, system, world
+from app.routes import approvals, auth, jobs, lifecycle, missions, research, simulation, system, world
 
 logger = logging.getLogger("nexorion.api")
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -113,7 +114,10 @@ def create_app(
         response.headers["Cache-Control"] = "no-store"
         if request.url.path not in {"/docs", "/redoc"}:
             response.headers["Content-Security-Policy"] = (
-                "default-src 'none'; frame-ancestors 'none'"
+                "default-src 'self'; base-uri 'self'; object-src 'none'; "
+                "frame-ancestors 'none'; form-action 'self'; "
+                "img-src 'self' data:; font-src 'self' data:; "
+                "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'"
             )
         return response
 
@@ -192,6 +196,9 @@ def create_app(
 
     app.include_router(auth.router, prefix="/v1")
     app.include_router(missions.router, prefix="/v1")
+    app.include_router(lifecycle.router, prefix="/v1")
+    app.include_router(approvals.router, prefix="/v1")
+    app.include_router(jobs.router, prefix="/v1")
     app.include_router(system.router, prefix="/v1")
     app.include_router(world.router, prefix="/v1")
     app.include_router(simulation.router, prefix="/v1")
@@ -204,6 +211,26 @@ def create_app(
     @app.get("/ready", include_in_schema=False)
     def root_ready(db: Session = Depends(get_db)) -> dict[str, str]:
         return _readiness_result(db)
+
+    # In Docker, the Vite build is copied to /app/frontend/dist.
+    # Keep API and health routes above this fallback.
+    frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+    frontend_index = frontend_dist / "index.html"
+    if frontend_index.is_file():
+        @app.get("/", include_in_schema=False)
+        def frontend_root() -> FileResponse:
+            return FileResponse(frontend_index)
+
+        @app.get("/{frontend_path:path}", include_in_schema=False)
+        def frontend_fallback(frontend_path: str) -> FileResponse:
+            # Unknown API paths must remain API 404s, not return the SPA document.
+            if frontend_path == "v1" or frontend_path.startswith("v1/"):
+                from fastapi import HTTPException
+                raise HTTPException(status_code=404, detail="Not Found")
+            requested = (frontend_dist / frontend_path).resolve()
+            if requested.is_relative_to(frontend_dist.resolve()) and requested.is_file():
+                return FileResponse(requested)
+            return FileResponse(frontend_index)
 
     return app
 

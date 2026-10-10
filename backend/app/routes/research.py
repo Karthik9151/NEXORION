@@ -23,6 +23,7 @@ from app.models import (
 )
 from app.origo import LIMITATIONS, ORIGO_VERIFIER_VERSION, evaluate_persisted_run
 from app.schemas import VerificationHistoryPublic, VerificationPublic
+from app.services.lifecycle import transition_mission
 from app.simulation import RULE_SET_VERSION, SCENARIO_REGISTRY
 
 router = APIRouter(tags=["research"])
@@ -306,6 +307,21 @@ def verify_run(
         resource_type="origo_verification", resource_id=attempt.id, decision="allow",
         reason="verification_" + str(result["status"]), request_id=request.state.request_id,
     ))
+    # Only persisted Origo verification may establish a terminal mission outcome.
+    verifier_commands = {
+        "verified": "verified_success",
+        "failed": "verification_failed",
+        "disputed": "verification_disputed",
+        "inconclusive": "verification_inconclusive",
+    }
+    if mission.state == "verifying":
+        transition_mission(
+            db, mission=mission, actor_id=None, actor_kind="origo-verifier",
+            command=verifier_commands[str(result["status"])],
+            expected_version=mission.version,
+            reason="independent Origo verification: " + str(result["status"]),
+            request_id=request.state.request_id, verifier_authorized=True,
+        )
     try:
         db.commit()
     except IntegrityError as exc:

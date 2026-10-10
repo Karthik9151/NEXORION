@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "/api" : "")).replace(/\/$/, "");
 
 export interface Workspace { id: string; name: string; role: string; created_at?: string; }
 export interface User { id: string; email: string; created_at?: string; }
@@ -33,6 +33,9 @@ export interface Evidence {
   id: string; evidence_type: string; source_class: "synthetic"; source_ref: string; producer?: string;
   producer_version?: string; content_digest: string; payload: Record<string, unknown>;
   limitations: string[]; created_at?: string;
+}
+export interface MissionJob {
+  id: string; mission_id: string; scenario_id: string; status: string; outcome?: string | null;
 }
 export interface SimulationRun {
   id: string; mission_id: string; scenario_id: string; outcome: string; status: string;
@@ -116,6 +119,16 @@ export const api = {
     request<WorldEntity>("/v1/world/entities", { method: "POST", workspaceId, body: { name, entity_type, environment_id: "synthetic-lab", attributes: { origin: "user-created synthetic fixture" } } }),
   captureBaseline: (workspaceId: string, missionId: string) =>
     request<unknown>("/v1/missions/" + encodeURIComponent(missionId) + "/baselines", { method: "POST", workspaceId, body: {} }),
+  missionCommand: (workspaceId: string, missionId: string, command: string, expectedVersion: number) =>
+    request<Mission>("/v1/missions/" + encodeURIComponent(missionId) + "/commands", {
+      method: "POST", workspaceId,
+      body: { command, expected_version: expectedVersion, reason: "workspace user requested mission workflow step" },
+    }),
+  enqueueJob: (workspaceId: string, missionId: string, scenarioId: string, idempotencyKey: string) =>
+    request<MissionJob>("/v1/missions/" + encodeURIComponent(missionId) + "/jobs", {
+      method: "POST", workspaceId, idempotencyKey,
+      body: { scenario_id: scenarioId, idempotency_key: idempotencyKey },
+    }),
   runs: (workspaceId: string, missionId: string) =>
     request<SimulationRun[]>("/v1/missions/" + encodeURIComponent(missionId) + "/runs?limit=100", { workspaceId }),
   simulate: (workspaceId: string, missionId: string, scenarioId: string, idempotencyKey: string) =>
