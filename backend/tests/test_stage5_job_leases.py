@@ -11,9 +11,9 @@ from app.models import (
     OrigoVerification,
     SimulationRun,
     User,
-    WorldSnapshot,
     Workspace,
     WorkspaceMembership,
+    WorldSnapshot,
 )
 from app.services.job_leases import claim_next_job, reconcile_expired_leases
 from app.services.lifecycle import canonical_mission_digest, transition_mission
