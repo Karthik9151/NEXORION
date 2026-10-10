@@ -8,7 +8,6 @@ import hashlib
 import json
 from typing import Any
 
-
 RULE_SET_VERSION = "auth-failure-rules-v1"
 SIMULATOR_VERSION = "0.1.0"
 LIMITATIONS = [
