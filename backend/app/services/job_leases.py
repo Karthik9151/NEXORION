@@ -19,12 +19,16 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def claim_next_job(db: Session, *, worker_id: str, lease_seconds: int = 30) -> MissionJob | None:
+def claim_next_job(
+    db: Session, *, worker_id: str, lease_seconds: int = 30, job_id: str | None = None,
+) -> MissionJob | None:
     if not worker_id.strip() or len(worker_id) > 128 or not 5 <= lease_seconds <= 120:
         raise ApiError(422, "INVALID_WORKER_LEASE", "Worker identity or lease duration is invalid.")
+    statement = select(MissionJob).where(MissionJob.status == "queued")
+    if job_id is not None:
+        statement = statement.where(MissionJob.id == job_id)
     job = db.scalar(
-        select(MissionJob).where(MissionJob.status == "queued")
-        .order_by(MissionJob.created_at.asc(), MissionJob.id.asc())
+        statement.order_by(MissionJob.created_at.asc(), MissionJob.id.asc())
         .with_for_update(skip_locked=True).limit(1)
     )
     if job is None:
