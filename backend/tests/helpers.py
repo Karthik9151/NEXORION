@@ -67,7 +67,7 @@ def prepare_approved_job(
         assert response.status_code == 200, response.text
         mission = response.json()
 
-    approver_email = f"stage5-approver-{uuid4().hex}@example.test"
+    approver_email = f"stage5-approver-{uuid4().hex}@example.com"
     approver = register(client, approver_email)
     db = client.app.state.session_factory()
     try:
