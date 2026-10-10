@@ -20,4 +20,4 @@ RUN python -m pip install --upgrade pip && python -m pip install -r requirements
 COPY --from=frontend-build /build/frontend/dist ./frontend/dist
 WORKDIR /app/backend
 EXPOSE 10000
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+CMD ["sh", "-c", "alembic upgrade head && python -m app.bootstrap_owner && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
