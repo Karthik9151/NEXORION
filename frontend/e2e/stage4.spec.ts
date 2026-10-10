@@ -23,7 +23,7 @@ async function addEntity(page: Page, name: string) {
   await page.getByLabel("Entity name").fill(name);
   await page.getByLabel("Entity type").selectOption("service");
   await page.locator(".modal-card").getByRole("button", { name: "Add entity", exact: true }).click();
-  await expect(page.getByText(name, { exact: true })).toBeVisible();
+  await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
 }
 
 test("invalid login returns a safe visible error", async ({ page }) => {
@@ -69,7 +69,7 @@ test("registration, workspace isolation, graph, simulation, verification, report
   await activeWorkspace.selectOption({ label: "Stage 4 E2E Workspace" });
   await expect(page.getByText("Secondary Only Entity", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Digital World", exact: true }).click();
-  await expect(page.getByText("Primary Only Entity", { exact: true })).toBeVisible();
+  await expect(page.getByText("Primary Only Entity", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Secondary Only Entity", { exact: true })).toHaveCount(0);
 
   // Create a mission and execute only a registered synthetic scenario.
