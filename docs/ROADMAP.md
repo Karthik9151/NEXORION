@@ -4,6 +4,10 @@
 
 The source documents use different phase structures (0–5, 0–7, and 0–8) and place some work in different phases. This roadmap groups the shared intent into delivery gates without claiming any phase is complete.
 
+## Live implementation tracking
+
+Use [Stage 4 implementation tracker](stage4/03_IMPLEMENTATION_TRACKER.md) for the dated status snapshot, evidence links, $0 cost gate, deployment blockers, and Stage 5–8 task-level acceptance matrix. This roadmap describes intended phases and acceptance criteria; the tracker records whether evidence exists. A phase is not complete unless the required source, tests, owner decisions, and release gates are evidenced.
+
 ## Phase 0 — Requirements and contracts
 
 **Deliverables:** glossary and identity hierarchy; mission contract; world/evidence data concepts; autonomy tiers; threat boundaries; measurable acceptance criteria.

@@ -4,7 +4,7 @@
 
 NEXORION is a proposed persistent digital environment in which a researcher can explore a modeled world, investigate security evidence, develop hypotheses, run reproducible simulations, and independently verify findings. The concept combines a stateful world model, coordinated specialist roles, explicit governance, and a future isolated lab for separately authorized experiments.
 
-> **Project status:** Stage 3's synthetic digital-world and deterministic-simulation backend slice is verified by GitHub Actions on `stage3-digital-world` (Python 3.11/3.12, Ruff, fresh SQLite migration round-trip, PostgreSQL 16 migration round-trip, and PostgreSQL API smoke test). This is not production-ready. The visual workspace, full Origo verification, general durable workflows, model-backed agents, and isolated lab remain future work. [Stage 3 verification run](https://github.com/Karthik9151/NEXORION/actions/runs/38026378118).
+> **Project status (10 October 2026):** Stage 4 work is recorded on the `stage4-implementation` branch, not as a production release. The Stage 4 acceptance record documents passing frontend build and Playwright checks, backend tests and Ruff on Python 3.11/3.12, and PostgreSQL 16 migration/API checks for the recorded code-bearing commit. Re-check CI on the final pull-request head before merge. A hosted smoke test and human visual sign-off have not been performed; production hosting is blocked by same-origin cookie/CSRF handling, missing owner bootstrap, and the need for the full API suite on PostgreSQL 16. See the [Stage 4 acceptance record](docs/stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md) and [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md). This project follows a hard **$0 spend ceiling**: local development and CI first, no paid infrastructure or billable model APIs, and no payment card on hosting accounts.
 
 ## The three identities
 
@@ -92,10 +92,18 @@ The Stage 3 branch adds a verified first executable world-and-simulation slice o
 - [Stage 3 index and acceptance gate](docs/stage3/00_STAGE3_INDEX.md)
 - API setup and walkthrough: [backend README](backend/README.md)
 
-Only registered synthetic fixtures can execute. This branch exposes no network scanning, shell commands, real-credential attempts, live telemetry ingestion, or live-system mutation. The basic fixture assertion checker is not the full independent Origo verifier, and the interface is not yet a visual graph editor.
+Those capability notes describe the **Stage 3 branch scope**: only registered synthetic fixtures execute, and no network scanning, shell commands, real-credential attempts, live telemetry ingestion, or live-system mutation are exposed. Stage 4 adds the visual workspace and persisted independent Origo verification described below; those additions do not authorize live-system activity.
+
+## Stage 4 — Workspace, Origo verification and reports
+
+The `stage4-implementation` working branch integrates the visual workspace with the authenticated API, workspace-scoped graph operations, registered synthetic scenarios, persisted Origo verification, and server-generated JSON/Markdown research reports. The branch's [Stage 4 acceptance record](docs/stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md) records frontend production-build and Playwright E2E passes, backend tests/Ruff on Python 3.11 and 3.12, and SQLite/PostgreSQL 16 migration plus PostgreSQL API integration checks for its code-bearing acceptance commit.
+
+**Close-out is still pending:** the acceptance record does not document a hosted smoke test or human visual sign-off; the latest branch-head CI must be rechecked before merge. Same-origin deployment, production owner bootstrap, and the full API suite on PostgreSQL 16 are separate readiness blockers. No Stage 4 merge SHA is recorded here because a merge has not been verified. See the [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md). Stage 4 remains synthetic-only and is not a production release.
 
 ## Core documentation
 
+- [Implementation tracker, $0 plan, blockers, and acceptance gates](docs/stage4/03_IMPLEMENTATION_TRACKER.md)
+- [Stage 4 acceptance and security verification](docs/stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md)
 - [Concept and scope](docs/CONCEPT.md)
 - [System architecture](docs/ARCHITECTURE.md)
 - [Agent registry](docs/AGENT_REGISTRY.md)
@@ -137,11 +145,11 @@ See [technology decision records](docs/stage1/05_TECHNOLOGY_DECISION_RECORDS.md)
 
 ## Development status and setup
 
-Executable backend source, a Python dependency manifest, an initial Alembic schema migration, API tests, and backend CI configuration now exist on the stage2 branch. Local setup and test instructions are documented in [backend/README.md](backend/README.md). This first foundation is not production-ready; CI, PostgreSQL integration, production identity/onboarding, and operational release gates must be verified before deployment.
+The repository contains the Stage 2 API foundation, Stage 3 synthetic world/simulation workflow, and Stage 4 workspace UI, Origo verification, and report-generation work on the `stage4-implementation` branch. Use [backend local setup](backend/README.md) and the [Stage 4 acceptance record](docs/stage4/02_ACCEPTANCE_AND_SECURITY_STATUS.md) for commands and the recorded automated evidence. The final PR-head CI result still needs to be checked before merge. This is not a production release: owner bootstrap, same-origin frontend/API deployment, complete PostgreSQL 16 API-suite coverage, hosted smoke testing, and human visual sign-off remain open. The [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md) is the single working status register and retains the hard $0 spend cap.
 
 ## Roadmap
 
-The intended sequence is: reconcile the blueprint; accept contracts and guardrails; implement the persistent world and mission foundation; build the synthetic authentication-failure vertical slice; add independent verification and evidence handling; introduce durable orchestration and bounded agent roles; then evaluate model-backed interaction and a separately isolated lab. Operational hardening and scaling should follow demonstrated requirements. See [roadmap](docs/ROADMAP.md) and [Stage 1 acceptance](docs/stage1/07_REQUIREMENT_TO_TEST_TRACEABILITY.md).
+The intended sequence is: reconcile the blueprint; accept contracts and guardrails; implement the persistent world and mission foundation; build the synthetic authentication-failure vertical slice; add independent verification and evidence handling; introduce durable orchestration and bounded agent roles; then evaluate model-backed interaction and a separately isolated lab. Operational hardening and scaling should follow demonstrated requirements. See [roadmap](docs/ROADMAP.md), [implementation tracker](docs/stage4/03_IMPLEMENTATION_TRACKER.md), and [Stage 1 acceptance](docs/stage1/07_REQUIREMENT_TO_TEST_TRACEABILITY.md).
 
 ## Licensing and contributions
 
