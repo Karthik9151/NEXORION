@@ -108,3 +108,14 @@ Stage 2 begins the roadmap's Phase 1 application foundation. The branch introduc
 - **Not part of this stage:** digital-world graph interactions, baseline snapshots, synthetic investigation execution, evidence provenance/verifier, durable mission state machine, agent orchestration, frontend, deployment, or lab/live-system access.
 
 See the Stage 2 index at docs/stage2/00_STAGE2_INDEX.md and the backend setup guide at backend/README.md. Passing unit/API tests is not a production security certification and does not complete later roadmap phases.
+
+
+## Stage 3 implementation status — digital world and deterministic simulation
+
+**Branch:** stage3-digital-world  
+**Status:** Implemented for review; automated CI and PostgreSQL/migration acceptance remain pending.
+
+- **Implemented in the branch:** synthetic entity and relationship routes; workspace isolation; versioned baselines with canonical digests; fixed suspicious-pattern and benign-control fixtures; deterministic simulation runs; idempotency-key enforcement; evidence provenance/digests; bounded mission-state transitions and audit events; API regression tests.
+- **Not included:** visual graph editing, arbitrary/custom executable scenarios, live asset discovery, external telemetry, network/host execution, full Origo verification, model-backed agents, durable distributed workflows, and isolated lab execution.
+- **Acceptance gate:** require passing GitHub Actions, clean migration checks on a fresh database, PostgreSQL integration testing, and review of synthetic-only and cross-workspace negative tests. Do not mark the phase verified solely because files are committed.
+- **Details:** see docs/stage3/00_STAGE3_INDEX.md.
