@@ -133,7 +133,7 @@ def reconcile_expired_leases(db: Session) -> int:
     """Mark expired running leases uncertain; never reassign based on timeout alone."""
     now = _now()
     jobs = db.scalars(select(MissionJob).where(
-        MissionJob.status == "running",
+        MissionJob.status.in_(["running", "cancelling"]),
         MissionJob.lease_expires_at.is_not(None),
         MissionJob.lease_expires_at < now,
     ).with_for_update(skip_locked=True)).all()
@@ -150,6 +150,20 @@ def reconcile_expired_leases(db: Session) -> int:
             attempt.status = "uncertain"
             attempt.error_category = "lease_expired"
             # Deliberately keep termination_confirmed false.
+        mission = db.scalar(select(Mission).where(
+            Mission.id == job.mission_id, Mission.workspace_id == job.workspace_id,
+        ))
+        if mission is not None and mission.state in {"running", "cancelling"}:
+            try:
+                transition_mission(
+                    db, mission=mission, actor_id=None, actor_kind="recovery",
+                    command="fail", expected_version=mission.version,
+                    reason="lease expired and safe worker termination cannot be established",
+                    request_id="worker:recovery",
+                )
+            except ApiError:
+                # Preserve the uncertain job and audit; never infer a safe replay.
+                db.rollback()
         db.add(AuditEvent(
             actor_id=None, workspace_id=job.workspace_id, action="mission.job_lease_expired",
             resource_type="mission_job", resource_id=job.id, decision="deny",
