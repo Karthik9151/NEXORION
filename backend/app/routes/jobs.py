@@ -207,6 +207,12 @@ def cancel_job(
     else:
         job.cancel_requested_at = job.cancel_requested_at or now
         job.status = "cancelling"
+        attempt = db.scalar(select(MissionJobAttempt).where(
+            MissionJobAttempt.job_id == job.id,
+            MissionJobAttempt.attempt_number == job.attempt_count,
+        ))
+        if attempt is not None:
+            attempt.status = "cancelling"
         if mission.state == "running":
             transition_mission(
                 db, mission=mission, actor_id=user.id, actor_kind="user",
