@@ -231,24 +231,27 @@ def upgrade() -> None:
         "mission_plans",
         ["workspace_id", "mission_id"],
     )
-    op.add_column(
-        "mission_approvals",
-        sa.Column(
-            "plan_id",
-            sa.String(36),
-            sa.ForeignKey("mission_plans.id", ondelete="RESTRICT"),
-            nullable=True,
-        ),
-    )
-    op.add_column(
-        "mission_jobs",
-        sa.Column(
-            "plan_id",
-            sa.String(36),
-            sa.ForeignKey("mission_plans.id", ondelete="RESTRICT"),
-            nullable=True,
-        ),
-    )
+    # SQLite cannot ALTER TABLE to add a foreign-key constraint directly.
+    # Alembic batch mode rebuilds the table on SQLite and uses ALTER TABLE on
+    # PostgreSQL; existing table constraints and data are retained.
+    with op.batch_alter_table("mission_approvals") as batch_op:
+        batch_op.add_column(
+            sa.Column(
+                "plan_id",
+                sa.String(36),
+                sa.ForeignKey("mission_plans.id", ondelete="RESTRICT"),
+                nullable=True,
+            )
+        )
+    with op.batch_alter_table("mission_jobs") as batch_op:
+        batch_op.add_column(
+            sa.Column(
+                "plan_id",
+                sa.String(36),
+                sa.ForeignKey("mission_plans.id", ondelete="RESTRICT"),
+                nullable=True,
+            )
+        )
     op.create_index("ix_mission_approvals_plan", "mission_approvals", ["plan_id"])
     op.create_index("ix_mission_jobs_plan", "mission_jobs", ["plan_id"])
 
