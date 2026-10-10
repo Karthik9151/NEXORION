@@ -108,3 +108,14 @@ Stage 2 begins the roadmap's Phase 1 application foundation. The branch introduc
 - **Not part of this stage:** digital-world graph interactions, baseline snapshots, synthetic investigation execution, evidence provenance/verifier, durable mission state machine, agent orchestration, frontend, deployment, or lab/live-system access.
 
 See the Stage 2 index at docs/stage2/00_STAGE2_INDEX.md and the backend setup guide at backend/README.md. Passing unit/API tests is not a production security certification and does not complete later roadmap phases.
+
+
+## Stage 3 implementation status — digital world and deterministic simulation
+
+**Branch:** stage3-digital-world  
+**Status:** Verified for the defined Stage 3 synthetic-only scope on commit `04b13f4a3f21e07c242e268fe45ab7396ab4954a`; [GitHub Actions passed](https://github.com/Karthik9151/NEXORION/actions/runs/38026378118), including Python 3.11/3.12 tests and Ruff, SQLite migration round-trip, PostgreSQL 16 migration round-trip, and a PostgreSQL API smoke test. This is not production acceptance.
+
+- **Implemented in the branch:** synthetic entity and relationship routes; workspace isolation; versioned baselines with canonical digests; fixed suspicious-pattern and benign-control fixtures; deterministic simulation runs; idempotency-key enforcement; evidence provenance/digests; bounded mission-state transitions and audit events; API regression tests.
+- **Not included:** visual graph editing, arbitrary/custom executable scenarios, live asset discovery, external telemetry, network/host execution, full Origo verification, model-backed agents, durable distributed workflows, and isolated lab execution.
+- **Acceptance evidence:** GitHub Actions passed on commit `04b13f4a3f21e07c242e268fe45ab7396ab4954a`; fresh SQLite and PostgreSQL 16 migration round-trips passed; the PostgreSQL-backed API smoke test passed; reviewed tests cover synthetic-only scope and cross-workspace negative cases. This verifies only the bounded Stage 3 slice, not production readiness, a full independent Origo verifier, or live-system capability.
+- **Details:** see docs/stage3/00_STAGE3_INDEX.md.

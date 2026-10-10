@@ -4,7 +4,7 @@
 
 NEXORION is a proposed persistent digital environment in which a researcher can explore a modeled world, investigate security evidence, develop hypotheses, run reproducible simulations, and independently verify findings. The concept combines a stateful world model, coordinated specialist roles, explicit governance, and a future isolated lab for separately authorized experiments.
 
-> **Project status:** Stage 2 adds an executable backend foundation on the `stage2` branch: local account sessions, workspace-scoped mission drafts, relational models and migrations, and automated API tests. This is not production-ready. The digital-world graph, scenario runner, independent verification, agent orchestration, frontend, and isolated lab remain future work.
+> **Project status:** Stage 3's synthetic digital-world and deterministic-simulation backend slice is verified by GitHub Actions on `stage3-digital-world` (Python 3.11/3.12, Ruff, fresh SQLite migration round-trip, PostgreSQL 16 migration round-trip, and PostgreSQL API smoke test). This is not production-ready. The visual workspace, full Origo verification, general durable workflows, model-backed agents, and isolated lab remain future work. [Stage 3 verification run](https://github.com/Karthik9151/NEXORION/actions/runs/38026378118).
 
 ## The three identities
 
@@ -84,6 +84,15 @@ Stage 2 implements the first executable backend slice on the stage2 branch for r
 - [Backend local setup and API walkthrough](backend/README.md)
 
 Local evidence for the Stage 2 working tree: 13 API tests pass; Python compilation passes; and the initial Alembic migration applies to a local SQLite test database. The pull-request CI result and PostgreSQL integration remain to be verified. The local-account adapter does not settle production SSO/MFA, account provisioning, deployment, data-retention, or other open owner decisions.
+
+## Stage 3 digital-world and simulation
+
+The Stage 3 branch adds a verified first executable world-and-simulation slice on top of the Stage 2 backend. GitHub Actions passed on commit `04b13f4a3f21e07c242e268fe45ab7396ab4954a`, including Python 3.11/3.12 tests and lint, fresh SQLite migration round-trips, PostgreSQL 16 migration round-trip, and an end-to-end PostgreSQL API smoke test. It provides workspace-scoped synthetic entities and relationships, versioned SHA-256 baseline snapshots, a fixed authentication-failure scenario and benign control, idempotent simulation run records, provenance-linked evidence, and deterministic fixture consistency checks.
+
+- [Stage 3 index and acceptance gate](docs/stage3/00_STAGE3_INDEX.md)
+- API setup and walkthrough: [backend README](backend/README.md)
+
+Only registered synthetic fixtures can execute. This branch exposes no network scanning, shell commands, real-credential attempts, live telemetry ingestion, or live-system mutation. The basic fixture assertion checker is not the full independent Origo verifier, and the interface is not yet a visual graph editor.
 
 ## Core documentation
 

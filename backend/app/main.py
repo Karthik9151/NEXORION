@@ -18,7 +18,7 @@ from app.config import Settings, get_settings
 from app.db import build_engine, build_session_factory
 from app.dependencies import get_db
 from app.errors import ApiError
-from app.routes import auth, missions, system
+from app.routes import auth, missions, simulation, system, world
 
 logger = logging.getLogger("nexorion.api")
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -68,11 +68,11 @@ def create_app(
 
     app = FastAPI(
         title="NEXORION API",
-        version="0.1.0",
+        version="0.2.0",
         description=(
-            "Application foundation for authenticated workspaces and synthetic-only mission "
-            "drafts. Mission execution, agent orchestration, and live-system access are not "
-            "exposed."
+            "Authenticated workspace API with a synthetic digital-world graph, "
+            "versioned baselines and deterministic registered-fixture simulations. "
+            "Live-system execution is not exposed."
         ),
         docs_url=None if app_settings.app_env == "production" else "/docs",
         redoc_url=None if app_settings.app_env == "production" else "/redoc",
@@ -177,6 +177,8 @@ def create_app(
     app.include_router(auth.router, prefix="/v1")
     app.include_router(missions.router, prefix="/v1")
     app.include_router(system.router, prefix="/v1")
+    app.include_router(world.router, prefix="/v1")
+    app.include_router(simulation.router, prefix="/v1")
 
     @app.get("/health", include_in_schema=False)
     def root_health() -> dict[str, str]:

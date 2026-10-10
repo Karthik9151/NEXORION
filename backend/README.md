@@ -1,14 +1,46 @@
-# NEXORION API — Stage 2 application foundation
+# NEXORION API — Stage 3 digital-world and simulation foundation
 
-This directory contains the first executable application foundation: server-side identity sessions, workspaces, persistent mission drafts, structured errors, audit events, PostgreSQL-compatible storage, migrations, and tests.
+This directory contains the executable API foundation: server-side identity sessions, workspace-scoped missions, a synthetic digital-world graph, versioned baseline snapshots, deterministic registered-fixture simulations, provenance-linked evidence, structured errors, audit events, migrations, and tests.
 
 ## Status and boundaries
 
-This is a foundational implementation, not a complete NEXORION system. It does not implement the digital-world graph, synthetic scenario runner, lifecycle transitions, agent orchestration, independent verifier, lab runner, live telemetry, or frontend. Mission records can be created and read as draft; clients cannot set mission state.
+This is a reviewable vertical slice, not a complete NEXORION system. The general mission lifecycle API, full independent Origo verifier, model-backed agent orchestration, durable worker queue, live telemetry transport, frontend, and lab runner are not implemented. The fixed simulation endpoint performs a bounded server-side state transition for the one synthetic run path; clients still cannot set mission state.
 
 The credential/session adapter is an initial local account implementation to make the authorization boundary testable. SSO/OIDC, MFA, account recovery, invitation/administrative provisioning, production identity ownership, and deployment topology remain owner decisions. Do not expose a production deployment until these choices and an approved account-provisioning path are resolved.
 
 All mission scopes accepted by this stage must explicitly use synthetic_only. No network, host-command, credential-attempt, or live-system execution endpoint exists.
+
+## Stage 3 digital-world and simulation walkthrough
+
+The API exposes these workspace-authorized routes:
+
+- POST and GET /v1/world/entities
+- POST and GET /v1/world/relationships
+- POST and GET /v1/missions/{mission_id}/baselines
+- POST /v1/missions/{mission_id}/simulate
+- GET /v1/missions/{mission_id}/runs
+
+Create the mission with autonomy_tier set to simulate_synthetic, scope.mode set to synthetic_only, and the intended registered scenario ID included in scope.scenario_ids. Capture a baseline before requesting a run. Mutating requests require the CSRF cookie value in X-CSRF-Token and the authorized workspace ID in X-Workspace-ID. Simulation requests also require an Idempotency-Key of 8–128 safe characters.
+
+The only registered scenarios are scenario-auth-failure-v1 and scenario-auth-benign-control-v1. The first should return suspicious_auth_pattern under the teaching rule; the control should return repeated_auth_failures. A completed result refers only to synthetic fixture data. Verification currently means fixed-fixture assertion checks and must not be interpreted as evidence about a live service.
+
+~~~bash
+# After registering and saving cookies.txt, set WORKSPACE_ID to the returned workspace ID.
+curl -i -b cookies.txt -X POST http://127.0.0.1:8000/v1/missions \
+  -H 'Content-Type: application/json' \
+  -H "X-Workspace-ID: $WORKSPACE_ID" \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -d '{"objective":"Investigate synthetic authentication failures","scope":{"mode":"synthetic_only","scenario_ids":["scenario-auth-failure-v1"],"entity_ids":[],"excluded_targets":["all external systems","all real credentials"]},"autonomy_tier":"simulate_synthetic"}'
+
+# Replace MISSION_ID with the returned mission ID.
+curl -i -b cookies.txt -X POST "http://127.0.0.1:8000/v1/missions/$MISSION_ID/baselines" \
+  -H "X-Workspace-ID: $WORKSPACE_ID" -H "X-CSRF-Token: $CSRF_TOKEN"
+
+curl -i -b cookies.txt -X POST "http://127.0.0.1:8000/v1/missions/$MISSION_ID/simulate" \
+  -H "Content-Type: application/json" -H "X-Workspace-ID: $WORKSPACE_ID" \
+  -H "X-CSRF-Token: $CSRF_TOKEN" -H "Idempotency-Key: stage3-manual-run-001" \
+  -d '{"scenario_id":"scenario-auth-failure-v1"}'
+~~~
 
 ## Local development
 
