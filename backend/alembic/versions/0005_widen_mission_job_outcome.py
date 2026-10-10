@@ -6,6 +6,7 @@ Revises: 0004_stage5_governance_jobs
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "0005_widen_mission_job_outcome"
