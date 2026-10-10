@@ -22,7 +22,9 @@ def _completed_run(client: TestClient, workspace_id: str) -> tuple[str, dict]:
     return mission_id, response.json()
 
 
-def test_simulation_does_not_claim_origo_verification_and_origo_persists_attempt(client: TestClient) -> None:
+def test_simulation_does_not_claim_origo_verification_and_origo_persists_attempt(
+    client: TestClient,
+) -> None:
     owner = register(client)
     workspace_id = owner["workspaces"][0]["id"]
     mission_id, run = _completed_run(client, workspace_id)
@@ -72,7 +74,10 @@ def test_legacy_evidence_without_events_is_inconclusive(client: TestClient) -> N
 
     response = client.post(
         f"/v1/missions/{mission_id}/runs/{run['id']}/verify",
-        headers={**csrf_headers(client, workspace_id), "Idempotency-Key": "origo-legacy-attempt-001"},
+        headers={
+            **csrf_headers(client, workspace_id),
+            "Idempotency-Key": "origo-legacy-attempt-001",
+        },
     )
     assert response.status_code == 201
     assert response.json()["status"] == "inconclusive"
@@ -92,7 +97,10 @@ def test_tampered_evidence_fingerprint_fails_verification(client: TestClient) ->
         db.close()
     response = client.post(
         f"/v1/missions/{mission_id}/runs/{run['id']}/verify",
-        headers={**csrf_headers(client, workspace_id), "Idempotency-Key": "origo-tamper-attempt-001"},
+        headers={
+            **csrf_headers(client, workspace_id),
+            "Idempotency-Key": "origo-tamper-attempt-001",
+        },
     )
     assert response.status_code == 201
     assert response.json()["status"] == "failed"
@@ -112,7 +120,10 @@ def test_conflicting_run_outcome_is_disputed(client: TestClient) -> None:
         db.close()
     response = client.post(
         f"/v1/missions/{mission_id}/runs/{run['id']}/verify",
-        headers={**csrf_headers(client, workspace_id), "Idempotency-Key": "origo-dispute-attempt-001"},
+        headers={
+            **csrf_headers(client, workspace_id),
+            "Idempotency-Key": "origo-dispute-attempt-001",
+        },
     )
     assert response.status_code == 201
     assert response.json()["status"] == "disputed"
