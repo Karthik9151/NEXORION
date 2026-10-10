@@ -39,6 +39,27 @@ npm run dev
 
 The Vite dev server proxies `/api/*` to `http://localhost:8000` by default. Override its target with `NEXORION_API_ORIGIN`. Register or sign in to load persisted data. The sample environment is an explicit UI-only preview: its data and actions remain in browser memory and cannot request real verification or server reports.
 
+
+## Browser end-to-end validation
+
+The Stage 4 acceptance suite uses Playwright with Chromium and a disposable SQLite database. It exercises invalid-login error handling, registration, selection between two authorized workspace memberships, workspace-scoped graph writes, the registered synthetic simulation flow, persisted Origo verification, server-generated report preview, and mobile navigation/overflow.
+
+CI installs the backend test dependencies, applies migrations to `/tmp/nexorion-stage4-e2e.db`, installs Chromium, and runs the browser suite. The multi-workspace fixture helper writes only to the disposable test database; it is not an application endpoint.
+
+To run locally after installing the backend and frontend dependencies, stop any existing server on ports 8000 and 4173, then run:
+
+```bash
+# From the repository root
+cd backend
+DATABASE_URL=sqlite:////tmp/nexorion-stage4-e2e.db APP_ENV=test alembic upgrade head
+cd ../frontend
+npm install
+npx playwright install chromium
+APP_ENV=test DATABASE_URL=sqlite:////tmp/nexorion-stage4-e2e.db NEXORION_API_ORIGIN=http://127.0.0.1:8000 npm run test:e2e
+```
+
+The suite creates a test account and records in that disposable database. Do not point it at a production or shared database.
+
 ## Stage 4 API integration
 
 The frontend's typed client calls these API contracts under `/v1`:
