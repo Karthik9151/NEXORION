@@ -15,8 +15,8 @@ from app.dependencies import get_current_user, get_db, require_csrf, require_wor
 from app.errors import ApiError
 from app.models import AuditEvent, Mission, User, WorkspaceMembership
 from app.schemas import StrictModel
-from app.services.lifecycle import canonical_mission_digest
-from app.stage5_models import MissionApproval
+from app.services.lifecycle import canonical_mission_digest, canonical_plan_document
+from app.stage5_models import MissionApproval, MissionPlan
 
 router = APIRouter(prefix="/missions", tags=["mission-approvals"])
 
@@ -33,6 +33,7 @@ class ApprovalPublic(StrictModel):
     mission_id: str
     requester_id: str
     approver_id: str | None
+    plan_id: str | None
     action_class: str
     approved_scope: dict[str, object]
     constraints: dict[str, object]
@@ -65,6 +66,7 @@ def _public(item: MissionApproval) -> ApprovalPublic:
     return ApprovalPublic(
         id=item.id, workspace_id=item.workspace_id, mission_id=item.mission_id,
         requester_id=item.requester_id, approver_id=item.approver_id,
+        plan_id=item.plan_id,
         action_class=item.action_class, approved_scope=item.approved_scope,
         constraints=item.constraints, plan_digest=item.plan_digest,
         plan_version=item.plan_version, decision=item.decision,
@@ -95,12 +97,39 @@ def decide_approval(
         raise ApiError(403, "SEPARATION_OF_DUTIES_REQUIRED",
             "The mission requester cannot approve their own execution.")
     now = datetime.now(timezone.utc)
+    plan_document = canonical_plan_document(mission)
+    plan_digest = canonical_mission_digest(mission)
+    plan = db.scalar(select(MissionPlan).where(
+        MissionPlan.workspace_id == mission.workspace_id,
+        MissionPlan.mission_id == mission.id,
+        MissionPlan.plan_version == mission.version,
+    ))
+    if plan is None:
+        plan = MissionPlan(
+            workspace_id=mission.workspace_id,
+            mission_id=mission.id,
+            plan_version=mission.version,
+            schema_version="1.0",
+            plan_digest=plan_digest,
+            plan_document=plan_document,
+            created_by=user.id,
+            created_at=now,
+        )
+        db.add(plan)
+        db.flush()
+    elif plan.plan_digest != plan_digest or plan.plan_document != plan_document:
+        raise ApiError(
+            409,
+            "IMMUTABLE_PLAN_CONFLICT",
+            "A plan already exists for this mission version with different content.",
+        )
     record = MissionApproval(
         workspace_id=mission.workspace_id, mission_id=mission.id,
+        plan_id=plan.id,
         requester_id=mission.requester_id, approver_id=user.id,
         action_class="synthetic_simulation", approved_scope=mission.scope,
         constraints={"synthetic_only": True, "registered_scenarios_only": True},
-        plan_digest=canonical_mission_digest(mission), plan_version=mission.version,
+        plan_digest=plan.plan_digest, plan_version=plan.plan_version,
         decision=payload.decision, decision_reason=payload.reason.strip(),
         created_at=now, expires_at=now + timedelta(minutes=payload.expires_in_minutes),
     )
