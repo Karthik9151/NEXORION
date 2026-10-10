@@ -195,13 +195,17 @@ def test_synthetic_simulation_is_reproducible_evidenced_and_idempotent(client: T
     assert run["baseline_id"] == baseline.json()["id"]
     assert run["input_digest"] and run["output_digest"]
     assert run["result"]["source_class"] == "synthetic"
-    assert run["result"]["verification"]["status"] == "verified"
-    assert all(check["passed"] for check in run["result"]["verification"]["checks"])
+    # Fixture consistency is explicitly not the Origo verification status.
+    assert "verification" not in run["result"]
+    assert all(check["passed"] for check in run["result"]["fixture_consistency"]["checks"])
     assert run["evidence"][0]["source_class"] == "synthetic"
     assert run["evidence"][0]["content_digest"]
     assert run["evidence"][0]["payload"]["supporting_event_ids"] == [
         "E1", "E2", "E3", "E4", "E5", "E6"
     ]
+    assert run["evidence"][0]["payload"]["payload_schema_version"] == "1.0"
+    assert len(run["evidence"][0]["payload"]["events"]) == 6
+    assert run["result"]["fixture_consistency"]["scope"] == "deterministic fixture assertions only"
 
     repeated = client.post(
         f"/v1/missions/{mission_id}/simulate",
