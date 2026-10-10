@@ -4,7 +4,7 @@
 
 NEXORION is a proposed persistent digital environment in which a researcher can explore a modeled world, investigate security evidence, develop hypotheses, run reproducible simulations, and independently verify findings. The concept combines a stateful world model, coordinated specialist roles, explicit governance, and a future isolated lab for separately authorized experiments.
 
-> **Project status:** Stage 3 adds a reviewable backend slice on the `stage3-digital-world` branch: persistent synthetic world entities and relationships, versioned baselines, fixed deterministic scenarios, provenance-linked evidence, and bounded simulation API routes. It is not production-ready; CI and PostgreSQL integration still require verification. The visual workspace, full Origo verification, general durable workflows, model-backed agents, and isolated lab remain future work.
+> **Project status:** Stage 3's synthetic digital-world and deterministic-simulation backend slice is verified by GitHub Actions on `stage3-digital-world` (Python 3.11/3.12, Ruff, fresh SQLite migration round-trip, PostgreSQL 16 migration round-trip, and PostgreSQL API smoke test). This is not production-ready. The visual workspace, full Origo verification, general durable workflows, model-backed agents, and isolated lab remain future work. [Stage 3 verification run](https://github.com/Karthik9151/NEXORION/actions/runs/38026378118).
 
 ## The three identities
 
