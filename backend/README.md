@@ -4,7 +4,7 @@ This directory contains the executable API foundation: server-side identity sess
 
 ## Status and boundaries
 
-This is a reviewable vertical slice, not a complete NEXORION system. The general mission lifecycle API, full independent Origo verifier, model-backed agent orchestration, durable worker queue, live telemetry transport, frontend, and lab runner are not implemented. The fixed simulation endpoint performs a bounded server-side state transition for the one synthetic run path; clients still cannot set mission state.
+The Stage 4 implementation branch extends this foundation with registered-scenario discovery, independently evaluated persisted synthetic evidence, append-only Origo verification history, and authorized server-generated JSON/Markdown research reports. Model-backed agent orchestration, a durable worker queue, live telemetry transport, and a live-system lab runner remain out of scope. The fixed simulation endpoint still operates on inert synthetic fixtures; clients cannot submit outcomes or set mission state.
 
 The credential/session adapter is an initial local account implementation to make the authorization boundary testable. SSO/OIDC, MFA, account recovery, invitation/administrative provisioning, production identity ownership, and deployment topology remain owner decisions. Do not expose a production deployment until these choices and an approved account-provisioning path are resolved.
 
@@ -22,7 +22,7 @@ The API exposes these workspace-authorized routes:
 
 Create the mission with autonomy_tier set to simulate_synthetic, scope.mode set to synthetic_only, and the intended registered scenario ID included in scope.scenario_ids. Capture a baseline before requesting a run. Mutating requests require the CSRF cookie value in X-CSRF-Token and the authorized workspace ID in X-Workspace-ID. Simulation requests also require an Idempotency-Key of 8–128 safe characters.
 
-The only registered scenarios are scenario-auth-failure-v1 and scenario-auth-benign-control-v1. The first should return suspicious_auth_pattern under the teaching rule; the control should return repeated_auth_failures. A completed result refers only to synthetic fixture data. Verification currently means fixed-fixture assertion checks and must not be interpreted as evidence about a live service.
+The only registered scenarios are scenario-auth-failure-v1 and scenario-auth-benign-control-v1. The first should return suspicious_auth_pattern under the teaching rule; the control should return repeated_auth_failures. A completed simulation refers only to synthetic fixture data. The fixture-consistency check is stored separately; Origo is requested explicitly and persists its own verdict. A verified synthetic result is not evidence about a live service.
 
 ~~~bash
 # After registering and saving cookies.txt, set WORKSPACE_ID to the returned workspace ID.
@@ -111,3 +111,19 @@ Tests use an isolated SQLite database. SQLite compatibility in tests does not re
 When APP_ENV=production, startup configuration validation requires PostgreSQL, SESSION_COOKIE_SECURE=true, and ALLOW_SELF_REGISTRATION=false. API documentation endpoints are disabled. Because this foundation does not yet include a production account bootstrap or invitation workflow, production rollout remains blocked until that is designed and authorized.
 
 No licence, deployment provider, identity federation provider, data-retention term, or production SLO is implied by this implementation.
+
+
+## Stage 4 Origo and research reports
+
+The Stage 4 branch provides:
+
+- \`GET /v1/scenarios\` — authenticated catalog of registered scenarios only.
+- \`POST /v1/missions/{mission_id}/runs/{run_id}/verify\` — independently evaluates persisted event detail and records the attempt. Send \`Idempotency-Key\` to make a retry return the same attempt.
+- \`GET /v1/missions/{mission_id}/runs/{run_id}/verification\` — returns verification history and latest attempt.
+- \`GET /v1/missions/{mission_id}/report\` and \`GET /v1/missions/{mission_id}/report.md\` — workspace-authorized persisted JSON and Markdown reports.
+
+Origo verifies event content digests, evidence association, provenance, event sequence and references, scenario/verifier version compatibility, the run input and output fingerprints, and whether an independently evaluated synthetic outcome agrees with the stored claims. Status meanings are \`verified\`, \`failed\`, \`disputed\` and \`inconclusive\`. Legacy evidence without persisted event details is inconclusive.
+
+A completed simulation and an Origo verification are separate records and status dimensions. Each attempt is stored in \`origo_verifications\` with its verifier version, checks, reasons, discrepancies, evidence IDs/fingerprints and timestamp. Migration \`0003_origo_verification\` is forward-only and does not rewrite earlier migrations.
+
+For a frontend served on another origin, set \`CORS_ALLOWED_ORIGINS\` to exact trusted origins. Credentialed wildcard CORS is rejected. Same-origin deployment or a Vite/reverse proxy is preferred. Keep \`SESSION_COOKIE_SECURE=true\` in production and never place credentials in frontend environment variables.
