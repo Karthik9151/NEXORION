@@ -636,6 +636,20 @@ function App() {
     }
   }
 
+  async function switchWorkspace(nextWorkspaceId: string) {
+    if (!user || demoMode || !nextWorkspaceId || nextWorkspaceId === workspaceId) return;
+    setWorkspaceId(nextWorkspaceId);
+    setMissions([]);
+    setEntities([]);
+    setRelationships([]);
+    setRuns([]);
+    setSelectedMissionId("");
+    setSelectedEntity(null);
+    setVerificationHistoryByRun({});
+    setReportPreview(null);
+    await refreshWorkspace(nextWorkspaceId);
+  }
+
   const changeScreen = (next: Screen) => {
     setScreen(next);
     setMobileMenuOpen(false);
@@ -917,6 +931,7 @@ function App() {
             <section className="screen-stack settings-stack">
               <section className="panel settings-profile"><div className="panel-heading"><div><div className="section-kicker">WORKSPACE PROFILE</div><h2>Session and workspace</h2><p>Identity and data-context information currently in use</p></div><span className="panel-icon"><Users size={18} /></span></div>
                 <div className="settings-profile-row"><div className="user-avatar large-avatar">{user?.email?.slice(0, 1).toUpperCase() || "S"}</div><div className="settings-profile-info"><strong>{user?.email || "Sample Analyst"}</strong><span>{demoMode ? "Sample browser session" : "Authenticated API user"}</span></div><StatusTag value={demoMode ? "Sample" : user ? "Authenticated" : "Offline"} /></div>
+                {user && !demoMode && <div className="workspace-switcher"><label className="field-label" htmlFor="active-workspace">Active workspace<select id="active-workspace" aria-label="Active workspace" value={workspaceId} disabled={workspaces.length < 2} onChange={(event) => { void switchWorkspace(event.target.value); }}>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}</select></label><small>{workspaces.length > 1 ? "Switching workspace reloads missions, graph records, runs, and verification history." : "Only one workspace is assigned to this account."}</small></div>}
                 <div className="settings-info-grid"><div><span>Workspace</span><strong>{demoMode ? "Research Sandbox" : workspaces.find((workspace) => workspace.id === workspaceId)?.name || "No workspace selected"}</strong></div><div><span>Workspace role</span><strong>{demoMode ? "Sample analyst" : workspaces.find((workspace) => workspace.id === workspaceId)?.role || "—"}</strong></div><div><span>Environment</span><strong>synthetic-lab</strong></div><div><span>Execution tier</span><strong>Registered fixtures only</strong></div></div>
               </section>
               <section className="panel settings-theme-panel"><div className="panel-heading"><div><div className="section-kicker">APPEARANCE SYSTEM</div><h2>Theme architecture</h2><p>Same information architecture with coordinated visual treatments</p></div></div>
